@@ -56,17 +56,7 @@ function rewriteRemoteHostToLocalHostInHeaders(
 	localPort: number,
 	localProtocol: "https" | "http"
 ) {
-	for (const [name, value] of Object.entries(headers)) {
-		// Rewrite the remote host to the local host.
-		if (typeof value === "string" && value.includes(remoteHost)) {
-			headers[name] = value
-				.replaceAll(
-					`https://${remoteHost}`,
-					`${localProtocol}://localhost:${localPort}`
-				)
-				.replaceAll(remoteHost, `localhost:${localPort}`);
-		}
-	}
+
 }
 
 type PreviewProxy = {
