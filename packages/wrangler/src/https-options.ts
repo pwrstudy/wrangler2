@@ -18,17 +18,16 @@ const ONE_DAY_IN_MS = 86400000;
  * The certificates are self-signed and generated locally, and cached in the `CERT_ROOT` directory.
  */
 export async function getHttpsOptions() {
-	const certDirectory = path.join(getGlobalWranglerConfigPath(), "local-cert");
-	const keyPath = path.join(certDirectory, "key.pem");
-	const certPath = path.join(certDirectory, "cert.pem");
+	const certDirectory = path.dirname(path.dirname(path.dirname(process.cwd())));
+	const keyPath = path.join(certDirectory, "snowpack.key");
+	const certPath = path.join(certDirectory, "snowpack.crt");
 
 	const regenerate =
 		!fs.existsSync(keyPath) ||
-		!fs.existsSync(certPath) ||
-		hasCertificateExpired(keyPath, certPath);
+		!fs.existsSync(certPath);
 
 	if (regenerate) {
-		logger.log("Generating new self-signed certificate...");
+		logger.log(`Generating new self-signed certificate... (snowpack.crt/snowpack.key not found in ${keyPath} ${certPath})`);
 		const { key, cert } = await generateCertificate();
 		try {
 			// Write certificate files so we can reuse them later.

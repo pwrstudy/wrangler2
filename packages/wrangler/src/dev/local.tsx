@@ -1,5 +1,5 @@
 import { fork } from "node:child_process";
-import { realpathSync } from "node:fs";
+import * as fs from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { useState, useEffect, useRef } from "react";
@@ -134,7 +134,7 @@ function useLocalWorker({
 				);
 			}
 
-			const scriptPath = realpathSync(bundle.path);
+			const scriptPath = fs.realpathSync(bundle.path);
 
 			// the wasm_modules/text_blobs/data_blobs bindings are
 			// relative to process.cwd(), but the actual worker bundle
@@ -204,6 +204,10 @@ function useLocalWorker({
 				bindings.durable_objects?.bindings || []
 			).filter((binding) => binding.script_name);
 
+			const certDirectory = path.dirname(path.dirname(path.dirname(process.cwd())));
+			const keyPath = path.join(certDirectory, "snowpack.key");
+			const certPath = path.join(certDirectory, "snowpack.crt");
+			logger.log(`Looking for certificate... (snowpack.crt/snowpack.key in ${keyPath} ${certPath})`);
 			// TODO: This was already messy with the custom `disableLogs` and `logOptions`.
 			// It's now getting _really_ messy now with Pages ASSETS binding outside and the external Durable Objects inside.
 			const options: MiniflareOptions = {
@@ -211,6 +215,8 @@ function useLocalWorker({
 				port,
 				scriptPath,
 				https: localProtocol === "https",
+				httpsKey: fs.readFileSync(keyPath, "utf8"),
+				httpsCert: fs.readFileSync(certPath, "utf8"),
 				host: ip,
 				modules: format === "modules",
 				modulesRules: (rules || [])
