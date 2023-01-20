@@ -1,5 +1,1058 @@
 # wrangler
 
+## 2.8.0
+
+### Minor Changes
+
+- [#2538](https://github.com/cloudflare/wrangler2/pull/2538) [`af4f27c5`](https://github.com/cloudflare/wrangler2/commit/af4f27c5966f52e605ab7c16ff9746b7802d3479) Thanks [@edevil](https://github.com/edevil)! - feat: support EmailEvent event type in `wrangler tail`.
+
+* [#2404](https://github.com/cloudflare/wrangler2/pull/2404) [`3f824347`](https://github.com/cloudflare/wrangler2/commit/3f824347c624a2cedf4af2b6bbd781b8581b08b5) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - feat: support bundling the raw Pages `_worker.js` before deploying
+
+  Previously, if you provided a `_worker.js` file, then Pages would simply check the
+  file for disallowed imports and then deploy the file as-is.
+
+  Not bundling the `_worker.js` file means that it cannot containing imports to other
+  JS files, but also prevents Wrangler from adding shims such as the one for the D1 alpha
+  release.
+
+  This change adds the ability to tell Wrangler to pass the `_worker.js` through the
+  normal Wrangler bundling process before deploying by setting the `--bundle`
+  command line argument to `wrangler pages dev` and `wrangler pages publish`.
+
+  This is in keeping with the same flag for `wrangler publish`.
+
+  Currently bundling is opt-in, flag defaults to `false` if not provided.
+
+### Patch Changes
+
+- [#2525](https://github.com/cloudflare/wrangler2/pull/2525) [`fe8c6917`](https://github.com/cloudflare/wrangler2/commit/fe8c69173821cfa5b0277e018df3a6207234b213) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: send `wrangler docs d1` to the right place
+
+* [#2542](https://github.com/cloudflare/wrangler2/pull/2542) [`b44e1a75`](https://github.com/cloudflare/wrangler2/commit/b44e1a7525248a4482248695742f3020347e3502) Thanks [@GregBrimble](https://github.com/GregBrimble)! - chore: Rename `--bundle` to `--no-bundle` in Pages commands to make similar to Workers
+
+- [#2551](https://github.com/cloudflare/wrangler2/pull/2551) [`bfffe595`](https://github.com/cloudflare/wrangler2/commit/bfffe59558675a3c943fc24bb8b4e29066ae0581) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: wrangler init --from-dash incorrectly expects index.ts while writing index.js
+
+  This PR fixes a bug where Wrangler would write a `wrangler.toml` expecting an index.ts file, while writing an index.js file.
+
+* [#2529](https://github.com/cloudflare/wrangler2/pull/2529) [`2270507c`](https://github.com/cloudflare/wrangler2/commit/2270507c7e7c7f0be4c39a9ee283147c0fe245cd) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - Remove "experimental \_routes.json" warnings
+
+  `_routes.json` is no longer considered an experimental feature, so let's
+  remove all warnings we have in place for that.
+
+- [#2548](https://github.com/cloudflare/wrangler2/pull/2548) [`4db768fa`](https://github.com/cloudflare/wrangler2/commit/4db768fa5e05e4351b08113a20525c700324d502) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: path should be optional for wrangler d1 backup download
+
+  This PR fixes a bug that forces folks to provide a `--output` flag to `wrangler d1 backup download`.
+
+* [#2528](https://github.com/cloudflare/wrangler2/pull/2528) [`18208091`](https://github.com/cloudflare/wrangler2/commit/18208091335e6fa60e736cdeed46462c4be42a38) Thanks [@caass](https://github.com/caass)! - Add some guidance when folks encounter a 10021 error.
+
+  Error code 10021 can occur when your worker doesn't pass startup validation. This error message will make it a little easier to reason about what happened and what to do next.
+
+  Closes #2519
+
+- [#1769](https://github.com/cloudflare/wrangler2/pull/1769) [`6a67efe9`](https://github.com/cloudflare/wrangler2/commit/6a67efe9ae1da27fb95ffb030959465781bc74b6) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - allow `fetch()` calls locally to accept URL Objects
+
+## 2.7.1
+
+### Patch Changes
+
+- [#2523](https://github.com/cloudflare/wrangler2/pull/2523) [`a5e9958c`](https://github.com/cloudflare/wrangler2/commit/a5e9958c7e37dd38c00ac6b713a21441491777fd) Thanks [@jahands](https://github.com/jahands)! - fix: unstable_dev() experimental options incorrectly applying defaults
+
+  A subtle difference when removing object-spreading of experimental unstable_dev() options caused `wrangler pages dev` interactivity to stop working. This switches back to object-spreading the passed in options on top of the defaults, fixing the issue.
+
+## 2.7.0
+
+### Minor Changes
+
+- [#2465](https://github.com/cloudflare/wrangler2/pull/2465) [`e1c2f5b9`](https://github.com/cloudflare/wrangler2/commit/e1c2f5b9653ecc183bbc8a33531babd26e10d241) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - After this PR, `wrangler init --yes` will generate a test for your new Worker project, using Vitest with TypeScript.
+  When using `wrangler init`, and choosing to create a Typescript project, you will now be asked if Wrangler should write tests for you, using Vitest.
+
+  This resolves issue #2436.
+
+* [#2333](https://github.com/cloudflare/wrangler2/pull/2333) [`71691421`](https://github.com/cloudflare/wrangler2/commit/7169142171b1c9b4ff2f19b8b46871932ef7d10a) Thanks [@markjmiller](https://github.com/markjmiller)! - Remove the experimental binding warning from Dispatch Namespace since [it is GA](https://blog.cloudflare.com/workers-for-platforms-ga/).
+
+### Patch Changes
+
+- [#2460](https://github.com/cloudflare/wrangler2/pull/2460) [`c2b2dfb8`](https://github.com/cloudflare/wrangler2/commit/c2b2dfb8e5b44ee73418a01682e65d0ca1320797) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: resolve unstable_dev flakiness in tests by awaiting the dev registry
+
+* [#2439](https://github.com/cloudflare/wrangler2/pull/2439) [`616f8739`](https://github.com/cloudflare/wrangler2/commit/616f8739253381e8d691084961159d1a0073d81f) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - fix(wrangler): do not login or read wrangler.toml when applying D1 migrations in local mode.
+
+  When applying D1 migrations to a deployed database, it is important that we are logged in
+  and that we have the database ID from the wrangler.toml.
+  This is not needed for `--local` mode where we are just writing to a local SQLite file.
+
+- [#1869](https://github.com/cloudflare/wrangler2/pull/1869) [`917b07b0`](https://github.com/cloudflare/wrangler2/commit/917b07b0d7ee6cdfae2edfa21fe3056a4475dd44) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - feat: enable Wrangler to target the staging API by setting WRANGLER_API_ENVIRONMENT=staging
+
+  If you are developing Wrangler, or an internal Cloudflare feature, and during testing,
+  need Wrangler to target the staging API rather than production, it is now possible by
+  setting the `WRANGLER_API_ENVIRONMENT` environment variable to `staging`.
+
+  This will update all the necessary OAuth and API URLs, update the OAuth client ID, and
+  also (if necessary) acquire an Access token for to get through the firewall to the
+  staging URLs.
+
+* [#2377](https://github.com/cloudflare/wrangler2/pull/2377) [`32686e42`](https://github.com/cloudflare/wrangler2/commit/32686e42b055c786f9821bbd66dd33960ab8f4d1) Thanks [@mrbbot](https://github.com/mrbbot)! - Fix `ReferenceError` when using `wrangler dev --experimental-local` in Node 16
+
+- [#2393](https://github.com/cloudflare/wrangler2/pull/2393) [`a6d24732`](https://github.com/cloudflare/wrangler2/commit/a6d24732e2553e220222cba7b70d9f1607602203) Thanks [@mrbbot](https://github.com/mrbbot)! - Remove login requirement from `wrangler dev --experimental-local`
+
+* [#2502](https://github.com/cloudflare/wrangler2/pull/2502) [`6b7ebc8d`](https://github.com/cloudflare/wrangler2/commit/6b7ebc8dd0dee5521bce49a6dfff997d308e900e) Thanks [@mrbbot](https://github.com/mrbbot)! - Upgrade `miniflare` to [`2.11.0`](https://github.com/cloudflare/miniflare/releases/tag/v2.11.0)
+
+- [#2485](https://github.com/cloudflare/wrangler2/pull/2485) [`4c0e2309`](https://github.com/cloudflare/wrangler2/commit/4c0e230950e9ef3dcb37d5b222b642cb0b0d8c9e) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Pages Plugin routing when mounted at the root of a project
+
+  Previously, there was a bug which meant that Plugins mounted at the root of a Pages project were not correctly matching incoming requests. This change fixes that bug so Plugins mounted at the root should now correctly work.
+
+* [#2479](https://github.com/cloudflare/wrangler2/pull/2479) [`7b479b91`](https://github.com/cloudflare/wrangler2/commit/7b479b9104266c83dda3b4e4a89ab9b919b743f0) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: bump d1js
+
+  This PR bumps d1js, adding the following functionality to the d1 alpha shim:
+
+  - validates supported types
+  - converts ArrayBuffer to array
+  - converts typedArray to array
+
+- [#2392](https://github.com/cloudflare/wrangler2/pull/2392) [`7785591c`](https://github.com/cloudflare/wrangler2/commit/7785591c95281a85ffb61eb514b850144970c4b2) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: improve `wrangler init --from-dash` help text and error handling
+
+* [#2391](https://github.com/cloudflare/wrangler2/pull/2391) [`19525a4b`](https://github.com/cloudflare/wrangler2/commit/19525a4b9ca8d26022510fef463d0169f704896e) Thanks [@mrbbot](https://github.com/mrbbot)! - Always log when delegating to local `wrangler` install.
+
+  When a global `wrangler` command is executed in a package directory with `wrangler` installed locally, the command is redirected to the local `wrangler` install.
+  We now always log a message when this happens, so you know what's going on.
+
+- [#2468](https://github.com/cloudflare/wrangler2/pull/2468) [`97282459`](https://github.com/cloudflare/wrangler2/commit/972824598438cc40c6179ea9d2d0229cbd9f3684) Thanks [@rozenmd](https://github.com/rozenmd)! - BREAKING CHANGE: move experimental options under the experimental object for unstable_dev
+
+* [#2477](https://github.com/cloudflare/wrangler2/pull/2477) [`3bd1b676`](https://github.com/cloudflare/wrangler2/commit/3bd1b6765729d39f0a5d2adef06cffeac7766b51) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: update NO_D1_WARNING to make it clear how to turn it off
+
+- [#2495](https://github.com/cloudflare/wrangler2/pull/2495) [`e93063e9`](https://github.com/cloudflare/wrangler2/commit/e93063e9854059ab4cc9a71fd22362b4ca01d3e9) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - fix(d1): ensure that migrations support compound statements
+
+  This fix updates the SQL statement splitting so that it does not split in the middle of compound statements.
+  Previously we were using a third party splitting library, but this needed fixing and was actually unnecessary for our purposes.
+  So a new splitter has been implemented and the library dependency removed.
+  Also the error handling in `d1 migrations apply` has been improved to handle a wider range of error types.
+
+  Fixes #2463
+
+* [#2400](https://github.com/cloudflare/wrangler2/pull/2400) [`08a0b22e`](https://github.com/cloudflare/wrangler2/commit/08a0b22e3f7e5ed536b7537ee5e93c39544bcfa0) Thanks [@mrbbot](https://github.com/mrbbot)! - Cleanly exit `wrangler dev --experimental-local` when pressing `x`/`q`/`CTRL-C`
+
+- [#2374](https://github.com/cloudflare/wrangler2/pull/2374) [`ecba1ede`](https://github.com/cloudflare/wrangler2/commit/ecba1edea298b89cdffa4b68c924d879f0f0d13b) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: make --from-dash error output clearer
+
+  This PR makes it clearer what --from-dash wants from you.
+
+  closes #2373
+  closes #2375
+
+* [#2377](https://github.com/cloudflare/wrangler2/pull/2377) [`32686e42`](https://github.com/cloudflare/wrangler2/commit/32686e42b055c786f9821bbd66dd33960ab8f4d1) Thanks [@mrbbot](https://github.com/mrbbot)! - Respect `FORCE_COLOR=0` environment variable to disable colored output when using `wrangler dev --local`
+
+- [#2455](https://github.com/cloudflare/wrangler2/pull/2455) [`d9c1d273`](https://github.com/cloudflare/wrangler2/commit/d9c1d2739c8335b0d7ba386e27a370aff1eca7b7) Thanks [@rozenmd](https://github.com/rozenmd)! - BREAKING CHANGE: refactor unstable_dev to use an experimental object, instead of a second options object
+
+  Before, if you wanted to disable the experimental warning, you would run:
+
+  ```js
+  worker = await unstable_dev(
+  	"src/index.js",
+  	{},
+  	{ disableExperimentalWarning: true }
+  );
+  ```
+
+  After this change, you'll need to do this instead:
+
+  ```js
+  worker = await unstable_dev("src/index.js", {
+  	experimental: { disableExperimentalWarning: true }
+  });
+  ```
+
+## 2.6.2
+
+### Patch Changes
+
+- [#2355](https://github.com/cloudflare/wrangler2/pull/2355) [`df6fea02`](https://github.com/cloudflare/wrangler2/commit/df6fea02b53066e54c12770cdb439e2dbb3208ea) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: don't ask for preview_database_id in --local
+
+* [#2349](https://github.com/cloudflare/wrangler2/pull/2349) [`8173bcca`](https://github.com/cloudflare/wrangler2/commit/8173bcca09fde15ffdde72bd125fb6968f4a9272) Thanks [@jspspike](https://github.com/jspspike)! - Initially check that worker exists when using --from-dash
+
+- [#2356](https://github.com/cloudflare/wrangler2/pull/2356) [`228781ee`](https://github.com/cloudflare/wrangler2/commit/228781eeb4b2d22275312876d07191017b6d8a06) Thanks [@rozenmd](https://github.com/rozenmd)! - feat: add wrangler docs command
+
+* [#2364](https://github.com/cloudflare/wrangler2/pull/2364) [`4bdb1f6d`](https://github.com/cloudflare/wrangler2/commit/4bdb1f6d0d3fbc4603542a743d25376574e0cdfc) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: implement `wrangler docs <command>`
+
+  closes #2359
+
+- [#2341](https://github.com/cloudflare/wrangler2/pull/2341) [`5afa13ec`](https://github.com/cloudflare/wrangler2/commit/5afa13ec8026bcfe4e09f4b523733236ccec0814) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: d1 - don't backup prod db when applying migrations locally
+
+  Closes #2336
+
+## 2.6.1
+
+### Patch Changes
+
+- [#2339](https://github.com/cloudflare/wrangler2/pull/2339) [`f6821189`](https://github.com/cloudflare/wrangler2/commit/f6821189110e5b6301fe77509a6bb9a8652bbc1b) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: `wrangler dev --local` now correctly lazy-imports `@miniflare/tre`
+
+  Previously, we introduced a bug where we were incorrectly requiring `@miniflare/tre`, even when not using the `workerd`/`--experimental-local` mode.
+
+## 2.6.0
+
+### Minor Changes
+
+- [#2268](https://github.com/cloudflare/wrangler2/pull/2268) [`3be1c2cf`](https://github.com/cloudflare/wrangler2/commit/3be1c2cf99fdaef1e612937ccc487a5196c5df67) Thanks [@GregBrimble](https://github.com/GregBrimble)! - feat: Add support for `--experimental-local` to `wrangler pages dev` which will use the `workerd` runtime.
+
+  Add `@miniflare/tre` environment polyfill to `@cloudflare/pages-shared`.
+
+* [#2163](https://github.com/cloudflare/wrangler2/pull/2163) [`d73a34be`](https://github.com/cloudflare/wrangler2/commit/d73a34be07c0bd14dc2eabc8cb0474f0d4a64c53) Thanks [@jimhawkridge](https://github.com/jimhawkridge)! - feat: Add support for Analytics Engine bindings.
+
+  For example:
+
+  ```
+  analytics_engine_datasets = [
+      { binding = "ANALYTICS", dataset = "my_dataset" }
+  ]
+  ```
+
+### Patch Changes
+
+- [#2177](https://github.com/cloudflare/wrangler2/pull/2177) [`e98613f8`](https://github.com/cloudflare/wrangler2/commit/e98613f8e2f417f996f351a67cdff54c05f0d194) Thanks [@caass](https://github.com/caass)! - Trigger login flow if a user runs `wrangler dev` while logged out
+
+  Previously, we would just error if a user logged out and then ran `wrangler dev`.
+  Now, we kick them to the OAuth flow and suggest running `wrangler dev --local` if
+  the login fails.
+
+  Closes [#2147](https://github.com/cloudflare/wrangler2/issues/2147)
+
+* [#2298](https://github.com/cloudflare/wrangler2/pull/2298) [`bb5e4f91`](https://github.com/cloudflare/wrangler2/commit/bb5e4f91512d9e12e7a90a9db3ee426b5e535934) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: d1 not using the preview database when using `wrangler dev`
+
+  After this fix, wrangler will correctly connect to the preview database, rather than the prod database when using `wrangler dev`
+
+- [#2176](https://github.com/cloudflare/wrangler2/pull/2176) [`d48ee112`](https://github.com/cloudflare/wrangler2/commit/d48ee1124a4a7a8834e228ccdaafbc3fc71b9357) Thanks [@caass](https://github.com/caass)! - Use the user's preferred default branch name if set in .gitconfig.
+
+  Previously, we would initialize new workers with `main` as the name of the default branch.
+  Now, we see if the user has a custom setting in .gitconfig for `init.defaultBranch`, and use
+  that if it exists.
+
+  Closes #2112
+
+* [#2275](https://github.com/cloudflare/wrangler2/pull/2275) [`bbfb6a96`](https://github.com/cloudflare/wrangler2/commit/bbfb6a960e1f57a1b3214497f05f1d55b8dfb5c0) Thanks [@mrbbot](https://github.com/mrbbot)! - Fix script reloads, and allow clean exits, when using `--experimental-local` on Linux
+
+- [#2275](https://github.com/cloudflare/wrangler2/pull/2275) [`bbfb6a96`](https://github.com/cloudflare/wrangler2/commit/bbfb6a960e1f57a1b3214497f05f1d55b8dfb5c0) Thanks [@mrbbot](https://github.com/mrbbot)! - Fix DevTools inspector support when using `--(experimental-)local`
+
+## 2.5.0
+
+### Minor Changes
+
+- [#2212](https://github.com/cloudflare/wrangler2/pull/2212) [`b24c2b2d`](https://github.com/cloudflare/wrangler2/commit/b24c2b2dc639a3b3ff528591d1758753cb64fc3c) Thanks [@dalbitresb12](https://github.com/dalbitresb12)! - feat: Allow pages dev to proxy websocket requests
+
+### Patch Changes
+
+- [#2296](https://github.com/cloudflare/wrangler2/pull/2296) [`7da8f0e6`](https://github.com/cloudflare/wrangler2/commit/7da8f0e69932d2ac849ecb06ab280c1d8756619f) Thanks [@Skye-31](https://github.com/Skye-31)! - Fix: check response status of `d1 backup download` command before writing contents to file
+
+* [#2260](https://github.com/cloudflare/wrangler2/pull/2260) [`c2940160`](https://github.com/cloudflare/wrangler2/commit/c29401604640940a5382a206f7bac900a3aad7b2) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: make it possible to use a local db for d1 migrations
+
+  As of this change, wrangler's d1 migrations commands now accept `local` and `persist-to` as flags, so migrations can run against the local d1 db.
+
+- [#1883](https://github.com/cloudflare/wrangler2/pull/1883) [`60d31c01`](https://github.com/cloudflare/wrangler2/commit/60d31c010656d10e0093921259019f67f15554ec) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Fix `--port=0` option to report the actually used port.
+
+## 2.4.4
+
+### Patch Changes
+
+- [#2265](https://github.com/cloudflare/wrangler2/pull/2265) [`42d88e3f`](https://github.com/cloudflare/wrangler2/commit/42d88e3f8dda5b40d17bd684cfc5475ab1505a18) Thanks [@WalshyDev](https://github.com/WalshyDev)! - Fix D1 bindings in `wrangler pages dev`
+
+## 2.4.3
+
+### Patch Changes
+
+- [#2249](https://github.com/cloudflare/wrangler2/pull/2249) [`e41c7e41`](https://github.com/cloudflare/wrangler2/commit/e41c7e41c3ee36d852daad859cd8cbb31641f95f) Thanks [@mrbbot](https://github.com/mrbbot)! - Enable pretty source-mapped error pages when using `--experimental-local`
+
+* [#2208](https://github.com/cloudflare/wrangler2/pull/2208) [`5bd04296`](https://github.com/cloudflare/wrangler2/commit/5bd04296ea15a72fbd8c3ac395d129d0dcfb9179) Thanks [@OilyLime](https://github.com/OilyLime)! - Add link to Queues tab in dashboard when unauthorized to use Queues
+
+- [#2248](https://github.com/cloudflare/wrangler2/pull/2248) [`effc2215`](https://github.com/cloudflare/wrangler2/commit/effc2215dd3b4a5be539d22795a59b02ca5164ff) Thanks [@rozenmd](https://github.com/rozenmd)! - chore: remove d1 local hardcoding
+
+  Prior to this change wrangler would only ever use local mode when testing d1.
+
+  After this change d1 tests can access both local and remote Workers.
+
+* [#2254](https://github.com/cloudflare/wrangler2/pull/2254) [`9e296a4d`](https://github.com/cloudflare/wrangler2/commit/9e296a4d0e71e7453e4b6722e7e12042040590ab) Thanks [@penalosa](https://github.com/penalosa)! - Add an option to customise whether `wrangler login` opens a browser automatically. Use `wrangler login --no-browser` to prevent a browser being open—the link will be printed to the console so it can be manually opened.
+
+## 2.4.2
+
+### Patch Changes
+
+- [#2232](https://github.com/cloudflare/wrangler2/pull/2232) [`5241925a`](https://github.com/cloudflare/wrangler2/commit/5241925aba4dd8566b0fa2ce69ea665a56581397) Thanks [@mrbbot](https://github.com/mrbbot)! - Fix `wrangler types` generation for service-worker type Workers`
+
+## 2.4.1
+
+### Patch Changes
+
+- [#2229](https://github.com/cloudflare/wrangler2/pull/2229) [`8eb53b1a`](https://github.com/cloudflare/wrangler2/commit/8eb53b1a225ba947a6da4303e4cabc4660974288) Thanks [@mrbbot](https://github.com/mrbbot)! - Unhide `--live-reload` option for local mode development
+
+* [#2209](https://github.com/cloudflare/wrangler2/pull/2209) [`d0f237d9`](https://github.com/cloudflare/wrangler2/commit/d0f237d9965f782ae8415fe9ff02e83e6e86b9af) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - This change makes the metrics directory XDG compliant
+
+  resolves #2075
+
+- [#2213](https://github.com/cloudflare/wrangler2/pull/2213) [`afdb7e49`](https://github.com/cloudflare/wrangler2/commit/afdb7e49828b5854742750dcc13bb2866f790492) Thanks [@mrbbot](https://github.com/mrbbot)! - Enable the Cache API when using `--experimental-local`
+
+## 2.4.0
+
+### Minor Changes
+
+- [#2193](https://github.com/cloudflare/wrangler2/pull/2193) [`0047ad30`](https://github.com/cloudflare/wrangler2/commit/0047ad304fd28f7c7f012549bfbc05d3477c7ef9) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - Local Mode Console Support
+  Added support for detailed `console.log` capability when using `--experimental-local`
+
+  resolves #2122
+
+### Patch Changes
+
+- [#2192](https://github.com/cloudflare/wrangler2/pull/2192) [`add4278a`](https://github.com/cloudflare/wrangler2/commit/add4278a2e576e4e13691a4108613c642de3005d) Thanks [@mrbbot](https://github.com/mrbbot)! - Add a `--experimental-local-remote-kv` flag to enable reading/writing from/to real KV namespaces.
+  Note this flag requires `--experimental-local` to be enabled.
+
+* [#2204](https://github.com/cloudflare/wrangler2/pull/2204) [`c725ce01`](https://github.com/cloudflare/wrangler2/commit/c725ce011f5e57147dc8a2c714926edd7e2a4bfb) Thanks [@jahands](https://github.com/jahands)! - fix: Upload filepath-routing configuration in wrangler pages publish
+
+  Publishing Pages projects containing a functions directory incorrectly did not upload the filepath-routing config so that the user can view it in Dash. This fixes that, making the generated routes viewable under `Routing configuration` in the `Functions` tab of a deployment.
+
+## 2.3.2
+
+### Patch Changes
+
+- [#2197](https://github.com/cloudflare/wrangler2/pull/2197) [`a3533024`](https://github.com/cloudflare/wrangler2/commit/a3533024ee63c7c7b1092b661ea40b789874cf9f) Thanks [@geelen](https://github.com/geelen)! - fix: truncate lines longer than 70 chars when executing d1 sql
+
+## 2.3.1
+
+### Patch Changes
+
+- [#2194](https://github.com/cloudflare/wrangler2/pull/2194) [`3dccedf1`](https://github.com/cloudflare/wrangler2/commit/3dccedf1d1f346c7a686c5c83783c0488cb72f87) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: make it possible to use d1 in scheduled and queue workers
+
+## 2.3.0
+
+### Minor Changes
+
+- [#2077](https://github.com/cloudflare/wrangler2/pull/2077) [`c9b564dc`](https://github.com/cloudflare/wrangler2/commit/c9b564dc23b298dc5efc08510fbf5b9d03992dc0) Thanks [@jrf0110](https://github.com/jrf0110)! - Adds tailing for Pages Functions
+
+### Patch Changes
+
+- [#2178](https://github.com/cloudflare/wrangler2/pull/2178) [`d165b741`](https://github.com/cloudflare/wrangler2/commit/d165b74191e396489b0d7052bc09d911a1b73bfe) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - [feat] Queues generated type:
+  Added the ability to generate manual types for Queues from
+  Wrangler configuration.
+
+## 2.2.3
+
+### Patch Changes
+
+- [#2182](https://github.com/cloudflare/wrangler2/pull/2182) [`7d8d53a7`](https://github.com/cloudflare/wrangler2/commit/7d8d53a7272059633e0928f8b2e039fc2390acb9) Thanks [@geelen](https://github.com/geelen)! - Wrangler D1 now supports the alpha release of migrations.
+
+* [#2138](https://github.com/cloudflare/wrangler2/pull/2138) [`2be9d642`](https://github.com/cloudflare/wrangler2/commit/2be9d64257ea5e4a957906bf6992fc97dc46e1f2) Thanks [@mrbbot](https://github.com/mrbbot)! - Reduce script reload times when using `wrangler dev --experimental-local`
+
+## 2.2.2
+
+### Patch Changes
+
+- [#2172](https://github.com/cloudflare/wrangler2/pull/2172) [`47a142af`](https://github.com/cloudflare/wrangler2/commit/47a142af42dd7f587d40d4436731af09514c1c71) Thanks [@KianNH](https://github.com/KianNH)! - Validate object size for wrangler r2 put
+
+* [#2161](https://github.com/cloudflare/wrangler2/pull/2161) [`dff756f3`](https://github.com/cloudflare/wrangler2/commit/dff756f3250240ec18a1d8564ac2cf0572b8d82e) Thanks [@jbw1991](https://github.com/jbw1991)! - Check for the correct API error code when attempting to detect missing Queues.
+
+- [#2165](https://github.com/cloudflare/wrangler2/pull/2165) [`a26f74ba`](https://github.com/cloudflare/wrangler2/commit/a26f74ba4269b42ed9a3cc119b7fc6e40697f639) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - Fix Var string type:
+  The type was not being coerced to a string, so TypeScript considered it a unresolved type.
+
+## 2.2.1
+
+### Patch Changes
+
+- [#2067](https://github.com/cloudflare/wrangler2/pull/2067) [`758419ed`](https://github.com/cloudflare/wrangler2/commit/758419ed05b430664f5c680b06f60b403cd00854) Thanks [@Skye-31](https://github.com/Skye-31)! - fix: Accurately determine when using imports in \_worker.js for Advanced Mode Pages Functions
+
+* [#2159](https://github.com/cloudflare/wrangler2/pull/2159) [`c5a7557f`](https://github.com/cloudflare/wrangler2/commit/c5a7557fb9adc54aa96e86812906420afc5accb1) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: silence the 10023 error that throws when deployments isn't fully rolled out
+
+- [#2067](https://github.com/cloudflare/wrangler2/pull/2067) [`758419ed`](https://github.com/cloudflare/wrangler2/commit/758419ed05b430664f5c680b06f60b403cd00854) Thanks [@Skye-31](https://github.com/Skye-31)! - fix: D1 support for Pages Functions
+
+* [#2067](https://github.com/cloudflare/wrangler2/pull/2067) [`758419ed`](https://github.com/cloudflare/wrangler2/commit/758419ed05b430664f5c680b06f60b403cd00854) Thanks [@Skye-31](https://github.com/Skye-31)! - chore: Refactor Pages Functions bundling
+
+## 2.2.0
+
+### Minor Changes
+
+- [#2107](https://github.com/cloudflare/wrangler2/pull/2107) [`511943e9`](https://github.com/cloudflare/wrangler2/commit/511943e9226f787aa997a325d39dc2caac05a73c) Thanks [@celso](https://github.com/celso)! - fix: D1 execute and backup commands improvements
+
+  - Better and faster handling when importing big SQL files using execute --file
+  - Increased visibility during imports, sends output with each batch API call
+  - Backups are now downloaded to the directory where wrangler was initiated from
+
+* [#2130](https://github.com/cloudflare/wrangler2/pull/2130) [`68f4fa6f`](https://github.com/cloudflare/wrangler2/commit/68f4fa6ff7d537c602c3b2ba99e9ce3afdbf2242) Thanks [@matthewdavidrodgers](https://github.com/matthewdavidrodgers)! - feature: Add warnings around bundle sizes for large scripts
+
+  Prints a warning for scripts > 1MB compressed, encouraging smaller
+  script sizes. This warning can be silenced by setting the
+  NO_SCRIPT_SIZE_WARNING env variable
+
+  If a publish fails with either a script size error or a validator error
+  on script startup (CPU or memory), we print out the largest 5
+  dependencies in your bundle. This is accomplished by using the esbuild
+  generated metafile.
+
+- [#2064](https://github.com/cloudflare/wrangler2/pull/2064) [`49b6a484`](https://github.com/cloudflare/wrangler2/commit/49b6a484508defb88a01b7a2d48119ec82bd5d86) Thanks [@jbw1991](https://github.com/jbw1991)! - Adds support for Cloudflare Queues. Adds new CLI commands to configure Queues. Queue producers and consumers can be defined in wrangler.toml.
+
+* [#1982](https://github.com/cloudflare/wrangler2/pull/1982) [`5640fe88`](https://github.com/cloudflare/wrangler2/commit/5640fe8889da6d14cc14b56b6c0470980de7bd66) Thanks [@penalosa](https://github.com/penalosa)! - Enable support for `wrangler dev` on Workers behind Cloudflare Access, utilising `cloudflared`. If you don't have `cloudflared` installed, Wrangler will prompt you to install it. If you _do_, then the first time you start developing using `wrangler dev` your default browser will open with a Cloudflare Access prompt.
+
+### Patch Changes
+
+- [#2134](https://github.com/cloudflare/wrangler2/pull/2134) [`b164e2d6`](https://github.com/cloudflare/wrangler2/commit/b164e2d6faff3a9a18f447ff47fe98e8cee24c86) Thanks [@jspspike](https://github.com/jspspike)! - Added current version to publish output
+
+* [#2127](https://github.com/cloudflare/wrangler2/pull/2127) [`0e561e83`](https://github.com/cloudflare/wrangler2/commit/0e561e8385bc8437dece78d3b805dad43bda830c) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - Fix: Missing Worker name using `--from-dash`
+  Added the `--from-dash` name as a fallback when no name is provided in the `wrangler init` command.
+  Additionally added a checks to the `std.out` to ensure that the name is provided.
+
+  resolves #1853
+
+- [#2073](https://github.com/cloudflare/wrangler2/pull/2073) [`1987a79d`](https://github.com/cloudflare/wrangler2/commit/1987a79d43158ebc6eeb54b2102214060266b6d7) Thanks [@mrbbot](https://github.com/mrbbot)! - If `--env <env>` is specified, we'll now check `.env.<env>`/`.dev.vars.<env>` first.
+  If they don't exist, we'll fallback to `.env`/`.dev.vars`.
+
+* [#2072](https://github.com/cloudflare/wrangler2/pull/2072) [`06aa6121`](https://github.com/cloudflare/wrangler2/commit/06aa61214bc71077ff55fecbe1581af9b5ad68ff) Thanks [@mrbbot](https://github.com/mrbbot)! - Fixed importing installed npm packages with the same name as Node built-in
+  modules if `node_compat` is disabled.
+
+- [#2124](https://github.com/cloudflare/wrangler2/pull/2124) [`02ca556c`](https://github.com/cloudflare/wrangler2/commit/02ca556c3e84d45cb3eaa5787a4a0ed5254c3815) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - Computing the name from binding response
+  Now the `vars` will be computed, example:
+  `[var.binding.name]: var.binding.text`
+
+  this will resolve the issue that was occurring with
+  generating a TOML with incorrect fields for the `vars` key/value pair.
+
+  resolves #2048
+
+## 2.1.15
+
+### Patch Changes
+
+- [#2103](https://github.com/cloudflare/wrangler2/pull/2103) [`f1fd62a1`](https://github.com/cloudflare/wrangler2/commit/f1fd62a11642de45eb87ebacb044fe8fcf2beea2) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Don't upload `functions/` directory as part of `wrangler pages publish`
+
+  If the root directory of a project was the same as the build output directory, we were previously uploading the `functions/` directory as static assets. This PR now ensures that the `functions/` files are only used to create Pages Functions and are no longer uploaded as static assets.
+
+  Additionally, we also now _do_ upload `_worker.js`, `_headers`, `_redirects` and `_routes.json` if they aren't immediate children of the build output directory. Previously, we'd ignore all files with this name regardless of location. For example, if you have a `public/blog/how-to-use-pages/_headers` file (where `public` is your build output directory), we will now upload the `_headers` file as a static asset.
+
+* [#2111](https://github.com/cloudflare/wrangler2/pull/2111) [`ab52f771`](https://github.com/cloudflare/wrangler2/commit/ab52f7717ffd5411886d1e30aee98f821237ddad) Thanks [@GregBrimble](https://github.com/GregBrimble)! - feat: Add a `passThroughOnException()` handler in Pages Functions
+
+  This `passThroughOnException()` handler is not as good as the built-in for Workers. We're just adding it now as a stop-gap until we can do the behind-the-scenes plumbing required to make the built-in function work properly.
+
+  We wrap your Pages Functions code in a `try/catch` and on failure, if you call `passThroughOnException()` we defer to the static assets of your project.
+
+  For example:
+
+  ```ts
+  export const onRequest = ({ passThroughOnException }) => {
+  	passThroughOnException();
+
+  	x; // Would ordinarily throw an error, but instead, static assets are served.
+  };
+  ```
+
+- [#2117](https://github.com/cloudflare/wrangler2/pull/2117) [`aa08ff7c`](https://github.com/cloudflare/wrangler2/commit/aa08ff7cc76913f010cf0a98e7e0e97b5641d2c8) Thanks [@nprogers](https://github.com/nprogers)! - Added error logging for pages upload
+
+## 2.1.14
+
+### Patch Changes
+
+- [#2074](https://github.com/cloudflare/wrangler2/pull/2074) [`b08ab1e5`](https://github.com/cloudflare/wrangler2/commit/b08ab1e507a740f6f120b66a5435f4bd0a9cd42c) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - The type command aggregates bindings and [custom module rules](https://developers.cloudflare.com/workers/wrangler/configuration/#bundling) from config, then generates a DTS file for both service workers' `declare global { ... }` or module workers' `interface Env { ... }`
+
+  Custom module rules generate `declare module`s based on the module type (`Text`, `Data` or `CompiledWasm`).
+  Module Example Outputs:
+
+  **CompiledWasm**
+
+  ```ts
+  declare module "**/*.wasm" {
+  	const value: WebAssembly.Module;
+  	export default value;
+  }
+  ```
+
+  **Data**
+
+  ```ts
+  declare module "**/*.webp" {
+  	const value: ArrayBuffer;
+  	export default value;
+  }
+  ```
+
+  **Text**
+
+  ```ts
+  declare module "**/*.text" {
+  	const value: string;
+  	export default value;
+  }
+  ```
+
+  resolves #2034
+  resolves #2033
+
+* [#2065](https://github.com/cloudflare/wrangler2/pull/2065) [`14c44588`](https://github.com/cloudflare/wrangler2/commit/14c44588c9d22e9c9f2ad2740df57809d0cbcfbc) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - fix(pages): `wrangler pages dev` matches routing rules in `_routes.json` too loosely
+
+  Currently, the logic by which we transform routing rules in `_routes.json` to
+  regular expressions, so we can perform `pathname` matching & routing when we
+  run `wrangler pages dev`, is too permissive, and leads to serving incorrect
+  assets for certain url paths.
+
+  For example, a routing rule such as `/foo` will incorrectly match pathname
+  `/bar/foo`. Similarly, pathname `/foo` will be incorrectly matched by the
+  `/` routing rule.
+  This commit fixes our routing rule to pathname matching logic and brings
+  `wrangler pages dev` on par with routing in deployed Pages projects.
+
+- [#2098](https://github.com/cloudflare/wrangler2/pull/2098) [`2a81caee`](https://github.com/cloudflare/wrangler2/commit/2a81caeeb785d0aa6ee242297c87ba62dfba48e7) Thanks [@threepointone](https://github.com/threepointone)! - feat: delete site/assets namespace when a worker is deleted
+
+  This patch deletes any site/asset kv namespaces associated with a worker when `wrangler delete` is used. It finds the namespace associated with a worker by using the names it would have otherwise used, and deletes it. It also does the same for the preview namespace that's used with `wrangler dev`.
+
+* [#2091](https://github.com/cloudflare/wrangler2/pull/2091) [`9491d86f`](https://github.com/cloudflare/wrangler2/commit/9491d86fef30759033a4435514560cba72c2c046) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - Wrangler deployments command
+  Added support for the deployments command, which allows you to list the last ten deployments for a given script.
+
+  The information will include:
+
+  - Version ID
+  - Version number
+  - Author email
+  - Latest deploy
+  - Created on
+
+  resolves #2089
+
+- [#2068](https://github.com/cloudflare/wrangler2/pull/2068) [`2c1fd9d2`](https://github.com/cloudflare/wrangler2/commit/2c1fd9d2772f9b2109e3c3aa7dec759138823c8d) Thanks [@mrbbot](https://github.com/mrbbot)! - Fixed issue where information and warning messages from Miniflare were being
+  discarded when using `wrangler dev --local`. Logs from Miniflare will now be
+  coloured too, if the terminal supports this.
+
+## 2.1.13
+
+### Patch Changes
+
+- [#2049](https://github.com/cloudflare/wrangler2/pull/2049) [`903b55d1`](https://github.com/cloudflare/wrangler2/commit/903b55d13d83f80a2893d7763f5bc220b0df2c3c) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: add missing `local` argument to unstable_dev's DevOptions
+
+* [#2026](https://github.com/cloudflare/wrangler2/pull/2026) [`7d987ee2`](https://github.com/cloudflare/wrangler2/commit/7d987ee270b53105b2794e8d6bced785b4b0925d) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Default to today's compatibility date in `wrangler pages dev`
+
+  Like `wrangler dev` proper, `wrangler pages dev` now defaults to using today's compatibility date.
+  It can be overriden with `--compatibility-date=YYYY-MM-DD`.
+
+  https://developers.cloudflare.com/workers/platform/compatibility-dates/
+
+- [#2035](https://github.com/cloudflare/wrangler2/pull/2035) [`76a66fc2`](https://github.com/cloudflare/wrangler2/commit/76a66fc2b6148c1764ac55a4ad79c42fcef9cf22) Thanks [@penalosa](https://github.com/penalosa)! - Warn when opening a tail on workers for which a restart could be disruptive (i.e. Workers which use Durable Objects in conjunction with WebSockets)
+
+* [#2045](https://github.com/cloudflare/wrangler2/pull/2045) [`c2d3286f`](https://github.com/cloudflare/wrangler2/commit/c2d3286fab527042eca76fd3626d1be0f79612cf) Thanks [@threepointone](https://github.com/threepointone)! - feat: implement a basic `wrangler delete`
+
+  This PR adds a simple (but useful!) implementation for `wrangler delete`. Of note, it'll delete a given service, including all it's bindings. It uses the same api as the dashboard.
+
+## 2.1.12
+
+### Patch Changes
+
+- [#2023](https://github.com/cloudflare/wrangler2/pull/2023) [`d6660ce3`](https://github.com/cloudflare/wrangler2/commit/d6660ce3e26d44b4db39b149868cb850e47763f0) Thanks [@caass](https://github.com/caass)! - Display a more helpful error when trying to publish to a route in use by another worker.
+
+  Previously, when trying to publish a worker to a route that was in use by another worker,
+  there would be a really unhelpful message about a failed API call. Now, there's a much
+  nicer message that tells you what worker is running on that route, and gives you a link
+  to the workers overview page so you can unassign it if you want.
+
+  ```text
+   ⛅️ wrangler 2.1.11
+  --------------------
+  Total Upload: 0.20 KiB / gzip: 0.17 KiB
+
+  ✘ [ERROR] Can't publish a worker to routes that are assigned to another worker.
+
+    "test-custom-routes-redeploy" is already assigned to route
+    test-custom-worker.swag.lgbt
+
+    Unassign other workers from the routes you want to publish to, and then try again.
+    Visit
+    https://dash.cloudflare.com/<account_id>/workers/overview
+    to unassign a worker from a route.
+  ```
+
+  Closes #1849
+
+* [#2013](https://github.com/cloudflare/wrangler2/pull/2013) [`c63ca0a5`](https://github.com/cloudflare/wrangler2/commit/c63ca0a550a4c3801665161d6d6ce5d2d3bff0a5) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: make d1 help print if a command is incomplete
+
+  Prior to this change, d1's commands would return silently if wrangler wasn't supplied enough arguments to run the command.
+
+  This change resolves this issue, and ensures help is always printed if the command couldn't run.
+
+- [#2016](https://github.com/cloudflare/wrangler2/pull/2016) [`932fecc0`](https://github.com/cloudflare/wrangler2/commit/932fecc0857dfdf8401b2293f71c34836a5bbb9d) Thanks [@caass](https://github.com/caass)! - Offer to create a workers.dev subdomain if a user needs one
+
+  Previously, when a user wanted to publish a worker to https://workers.dev by setting `workers_dev = true` in their `wrangler.toml`,
+  but their account didn't have a subdomain registered, we would error out.
+
+  Now, we offer to create one for them. It's not implemented for `wrangler dev`, which also expects you to have registered a
+  workers.dev subdomain, but we now error correctly and tell them what the problem is.
+
+* [#2003](https://github.com/cloudflare/wrangler2/pull/2003) [`3ed06b40`](https://github.com/cloudflare/wrangler2/commit/3ed06b4096d3ea9ed601ae05d77442e5b0217678) Thanks [@GregBrimble](https://github.com/GregBrimble)! - chore: Bump miniflare@2.10.0
+
+- [#2024](https://github.com/cloudflare/wrangler2/pull/2024) [`4ad48e4d`](https://github.com/cloudflare/wrangler2/commit/4ad48e4d9b617dd322c6d4b9c0853588a1521a71) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: make it possible for values in vars and defines to have colons (:)
+
+  Prior to this change, passing --define someKey:https://some-value.com would result in an incomplete value being passed to the Worker.
+
+  This change correctly handles colons for var and define in `wrangler dev` and `wrangler publish`.
+
+* [#2032](https://github.com/cloudflare/wrangler2/pull/2032) [`f33805d2`](https://github.com/cloudflare/wrangler2/commit/f33805d28b23b613f03169726b91ac3b1b3428d5) Thanks [@caass](https://github.com/caass)! - Catch unsupported terminal errors and provide a nicer error message.
+
+  Wrangler depends on terminals supporting [raw mode](https://en.wikipedia.org/wiki/Terminal_mode). Previously, attempting to run wrangler from a terminal that didn't support raw mode would result in
+  an Ink error, which was both an exposure of an internal implementation detail to the user and also not actionable:
+
+  ```text
+    ERROR Raw mode is not supported on the current process.stdin, which Ink uses
+         as input stream by default.
+         Read about how to prevent this error on
+         https://github.com/vadimdemedes/ink/#israwmodesupported
+  ```
+
+  Now, we provide a much nicer error, which provides an easy next step for th user:
+
+  ```text
+
+  ERROR: This terminal doesn't support raw mode.
+
+  Wrangler uses raw mode to read user input and write output to the terminal, and won't function correctly without it.
+
+  Try running your previous command in a terminal that supports raw mode, such as Command Prompt or Powershell.
+  ```
+
+  Closes #1992
+
+- [#1946](https://github.com/cloudflare/wrangler2/pull/1946) [`7716c3b9`](https://github.com/cloudflare/wrangler2/commit/7716c3b9dfed540d7ddfec90f042e870a262be78) Thanks [@penalosa](https://github.com/penalosa)! - Support subdomains with wrangler dev for routes defined with `zone_name` (instead of just for routes defined with `zone_id`)
+
+## 2.1.11
+
+### Patch Changes
+
+- [#1957](https://github.com/cloudflare/wrangler2/pull/1957) [`b579c2b5`](https://github.com/cloudflare/wrangler2/commit/b579c2b5ad8dc1d19e1b4bf7ff11f56d0c8d4e1f) Thanks [@caass](https://github.com/caass)! - Remove dependency on create-cloudflare.
+
+  Previously, `wrangler generate` was a thin wrapper around [`create-cloudflare`](https://github.com/cloudflare/templates/tree/main/packages/create-cloudflare). Now, we've moved over the logic from that package directly into `wrangler`.
+
+* [#1985](https://github.com/cloudflare/wrangler2/pull/1985) [`51385e57`](https://github.com/cloudflare/wrangler2/commit/51385e5740c189ec4854c76307cb9ed821e3712f) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: hide deprecated flags from --help menu
+
+- [#1944](https://github.com/cloudflare/wrangler2/pull/1944) [`ea54623c`](https://github.com/cloudflare/wrangler2/commit/ea54623ce2f2f5bc5ac5c48a58730bb3f75afd9c) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - `wrangler pages publish` should prioritize `_worker.js` over `/functions` if both exist
+
+* [#1950](https://github.com/cloudflare/wrangler2/pull/1950) [`daf73fbe`](https://github.com/cloudflare/wrangler2/commit/daf73fbe03b55631383cdc86a05eac12d2775875) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - `wrangler pages dev` should prioritize `_worker.js`
+
+  When using a `_worker.js` file, the entire `/functions` directory should be ignored – this includes its routing and middleware characteristics. Currently `wrangler pages dev` does the reverse, by prioritizing
+  `/functions` over `_worker.js`. These changes fix the current behaviour.
+
+- [#1928](https://github.com/cloudflare/wrangler2/pull/1928) [`c1722170`](https://github.com/cloudflare/wrangler2/commit/c1722170e93101a292a3c14110b131457f7164d6) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Allow unsetting of automatically generated `Link` headers using `_headers` and the `! Link` operator
+
+* [#1928](https://github.com/cloudflare/wrangler2/pull/1928) [`c1722170`](https://github.com/cloudflare/wrangler2/commit/c1722170e93101a292a3c14110b131457f7164d6) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Only generate `Link` headers from simple `<link>` elements.
+
+  Specifically, only those with the `rel`, `href` and possibly `as` attributes. Any element with additional attributes will not be used to generate headers.
+
+- [#1974](https://github.com/cloudflare/wrangler2/pull/1974) [`a96f2585`](https://github.com/cloudflare/wrangler2/commit/a96f25856615befef5d03adffd3808a393bf145e) Thanks [@GregBrimble](https://github.com/GregBrimble)! - chore: Bump @cloudflare/pages-shared@0.0.7 and use TS directly
+
+* [#1965](https://github.com/cloudflare/wrangler2/pull/1965) [`9709d3a3`](https://github.com/cloudflare/wrangler2/commit/9709d3a31d4fc192c257d0347f111dec465fd20c) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - chore: remove hidden on --from-dash
+  The --from-dash can now be used with the dashboard features to support moving Worker developmment to a local machine.
+
+  resolves #1783
+
+- [#1978](https://github.com/cloudflare/wrangler2/pull/1978) [`6006ae50`](https://github.com/cloudflare/wrangler2/commit/6006ae5010ab32bbd81b002b26cd450cdf58b1a5) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - chore: Undici 5.11.0 multipart/form-data support
+  The 5.11.0 version of Undici now supports multipart/form-data previously needed a ponyfill
+  we can now handle the multipart/form-data without any custom code.
+
+  resolves #1977
+
+## 2.1.10
+
+### Patch Changes
+
+- [#1955](https://github.com/cloudflare/wrangler2/pull/1955) [`b6dd07a1`](https://github.com/cloudflare/wrangler2/commit/b6dd07a1ba823c45244de18c2ebbe1e3b56c1ed7) Thanks [@cameron-robey](https://github.com/cameron-robey)! - chore: error if d1 bindings used with `no-bundle`
+
+  While in beta, you cannot use D1 bindings without bundling your worker as these are added in through a facade which gets bypassed when using the `no-bundle` option.
+
+* [#1964](https://github.com/cloudflare/wrangler2/pull/1964) [`1f50578e`](https://github.com/cloudflare/wrangler2/commit/1f50578ee8f8a007464b7bd4061a5df74488dbc0) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - chore: Emoji space in help description
+  Added a space between the Emoji and description for the secret:bulk command.
+
+- [#1967](https://github.com/cloudflare/wrangler2/pull/1967) [`02261f27`](https://github.com/cloudflare/wrangler2/commit/02261f27d9d3a6b83087d12b8e653d0039176a83) Thanks [@rozenmd](https://github.com/rozenmd)! - feat: implement remote mode for unstable_dev
+
+  With this change, `unstable_dev` can now perform end-to-end (e2e) tests against your workers as you dev.
+
+  Note that to use this feature in CI, you'll need to configure `CLOUDFLARE_API_TOKEN` as an environment variable in your CI, and potentially add `CLOUDFLARE_ACCOUNT_ID` as an environment variable in your CI, or `account_id` in your `wrangler.toml`.
+
+  Usage:
+
+  ```js
+  await unstable_dev("src/index.ts", {
+  	local: false
+  });
+  ```
+
+## 2.1.9
+
+### Patch Changes
+
+- [#1937](https://github.com/cloudflare/wrangler2/pull/1937) [`905fce4f`](https://github.com/cloudflare/wrangler2/commit/905fce4feb0ac34200b597ff5e8c325aaf65b491) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - fix: fails to publish due to empty migrations
+  After this change, `wrangler init --from-dash` will not attempt to add durable object migrations to `wrangler.toml` for Workers that don't have durable objects.
+
+  fixes #1854
+
+* [#1943](https://github.com/cloudflare/wrangler2/pull/1943) [`58a430f2`](https://github.com/cloudflare/wrangler2/commit/58a430f27fb683f422e552f7c26338f950f39c2b) Thanks [@cameron-robey](https://github.com/cameron-robey)! - chore: add `env` and `ctx` params to `fetch` in javascript example template
+
+  Just like in the typescript templates, and the javascript template for scheduled workers, we include `env` and `ctx` as parameters to the `fetch` export. This makes it clearer where environment variables live.
+
+- [#1934](https://github.com/cloudflare/wrangler2/pull/1934) [`7ebaec1a`](https://github.com/cloudflare/wrangler2/commit/7ebaec1a38384b5f04001ad2d8603d7ac0322534) Thanks [@mrbbot](https://github.com/mrbbot)! - Allow `--experimental-local` to be used with module workers
+
+* [#1939](https://github.com/cloudflare/wrangler2/pull/1939) [`5854cb69`](https://github.com/cloudflare/wrangler2/commit/5854cb6918cd0271683b4f3f62987f3e9e4b3300) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: respect variable binding type when printing
+
+  After this change, when printing the bindings it has access to, wrangler will correctly only add quotes around string variables, and serialize objects via JSON.stringify (rather than printing `"[object Object]"`).
+
+- [#1953](https://github.com/cloudflare/wrangler2/pull/1953) [`20195479`](https://github.com/cloudflare/wrangler2/commit/20195479c9f57d9fede1f5924f6a4ab36f860bea) Thanks [@mrbbot](https://github.com/mrbbot)! - Add `--experimental-local` support to `unstable_dev`
+
+* [#1930](https://github.com/cloudflare/wrangler2/pull/1930) [`56798155`](https://github.com/cloudflare/wrangler2/commit/5679815521d7e62d24866eee1653ba409a53e12b) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: use node http instead of faye-websocket in proxy server
+
+  We change how websockets are handled in the proxy server, fixing multiple issues of websocket behaviour, particularly to do with headers.
+
+  In particular this fixes:
+
+  - the protocol passed between the client and the worker was being stripped out by wrangler
+  - wrangler was discarding additional headesr from websocket upgrade response
+  - websocket close code and reason was not being propagated by wrangler
+
+## 2.1.8
+
+### Patch Changes
+
+- [#1894](https://github.com/cloudflare/wrangler2/pull/1894) [`ed646cf9`](https://github.com/cloudflare/wrangler2/commit/ed646cf902a86f467ec2ed08545ced3f97468d31) Thanks [@mrbbot](https://github.com/mrbbot)! - Add experimental support for using the open-source Workers runtime [`workerd`](https://github.com/cloudflare/workerd) in `wrangler dev`.
+  Use `wrangler dev --experimental-local` to try it out! 🚀
+  Note this feature is still under active development.
+
+## 2.1.7
+
+### Patch Changes
+
+- [#1881](https://github.com/cloudflare/wrangler2/pull/1881) [`6ff5a030`](https://github.com/cloudflare/wrangler2/commit/6ff5a0308b8f65f0422719ede3a2a4863311d3d9) Thanks [@Skye-31](https://github.com/Skye-31)! - Chore: correctly log all listening ports on remote mode (closes #1652)
+
+* [#1913](https://github.com/cloudflare/wrangler2/pull/1913) [`9f7cc5a0`](https://github.com/cloudflare/wrangler2/commit/9f7cc5a06a704ff2320d0a1996baf6a1da7845a4) Thanks [@threepointone](https://github.com/threepointone)! - feat: expose port and address on (Unstable)DevWorker
+
+  when using `unstable_dev()`, I think we want to expose the port/address that the server has started on. The usecase is when trying to connect to the server _without_ calling `.fetch()` (example: when making a websocket connection).
+
+- [#1911](https://github.com/cloudflare/wrangler2/pull/1911) [`16c28502`](https://github.com/cloudflare/wrangler2/commit/16c28502593c27a1b372d8056a55cdee32b5c4cf) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: put config cache log behind logger.debug
+
+  Prior to this change, wrangler would print `Retrieving cached values for...` after almost every single command.
+
+  After this change, you'll only see this message if you add `WRANGLER_LOG=debug` before your command.
+
+  Closes #1808
+
+* [#1687](https://github.com/cloudflare/wrangler2/pull/1687) [`28cd7361`](https://github.com/cloudflare/wrangler2/commit/28cd7361a6386913b62389705c335dd1b12d1dd6) Thanks [@geelen](https://github.com/geelen)! - Wrangler now supports the beta release of D1.
+
+## 2.1.6
+
+### Patch Changes
+
+- [#1890](https://github.com/cloudflare/wrangler2/pull/1890) [`5a4c7113`](https://github.com/cloudflare/wrangler2/commit/5a4c7113bd34753f571d7c7984658c8b3bb033e0) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: add missing noBundle type to api/dev
+
+* [#1895](https://github.com/cloudflare/wrangler2/pull/1895) [`1b53bf9d`](https://github.com/cloudflare/wrangler2/commit/1b53bf9d06fbe2afbd43c18b6406e59e85618dc3) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: rename keep_bindings to keep_vars, and make it opt-in, to keep wrangler.toml compatible with being used for Infrastructure as Code
+
+  By default, wrangler.toml is the source of truth for your environment configuration, like a terraform file.
+
+  If you change your settings (particularly your vars) in the dashboard, wrangler _will_ override them. If you want to disable this behavior, set this field to true.
+
+  Between wrangler 2.0.28 and 2.1.5, by default wrangler would _not_ delete your vars by default, breaking expected wrangler.toml behaviour.
+
+- [#1889](https://github.com/cloudflare/wrangler2/pull/1889) [`98f756c7`](https://github.com/cloudflare/wrangler2/commit/98f756c7dfcdefaf1426b6770d0c0450ce4a8619) Thanks [@penalosa](https://github.com/penalosa)! - fix: Correctly place the `.wrangler/state` local state directory in the same directory as `wrangler.toml` by default
+
+* [#1886](https://github.com/cloudflare/wrangler2/pull/1886) [`8b647175`](https://github.com/cloudflare/wrangler2/commit/8b647175d31716ef5ff6f801bfd9ed47e2af4bcc) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - fix: potential missing compatibility_date in wrangler.toml when running `wrangler init --from-dash`
+  Fixed a bug where compatibility_date wasn't being added to wrangler.toml when initializing a worker via `wrangler init --from-dash`
+
+  fixes #1855
+
+## 2.1.5
+
+### Patch Changes
+
+- [#1819](https://github.com/cloudflare/wrangler2/pull/1819) [`d8a18070`](https://github.com/cloudflare/wrangler2/commit/d8a18070c5abe5d9e62da4d5adab794626156ab3) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - Adds support for custom \_routes.json when running `wrangler pages dev`
+
+* [#1815](https://github.com/cloudflare/wrangler2/pull/1815) [`d8fe95d2`](https://github.com/cloudflare/wrangler2/commit/d8fe95d252a4fd8da5d65eacc32c3be49fca212d) Thanks [@cameron-robey](https://github.com/cameron-robey)! - feat: testing scheduled events with `wrangler dev` remote mode
+
+  Using the new middleware (https://github.com/cloudflare/wrangler2/pull/1735), we implement a way of testing scheduled workers from a fetch using `wrangler dev` in remote mode, by passing a new command line flag `--test-scheduled`. This exposes a route `/__scheduled` which will trigger the scheduled event.
+
+  ```sh
+  $ npx wrangler dev index.js --test-scheduled
+
+  $ curl http://localhost:8787/__scheduled
+  ```
+
+  Closes https://github.com/cloudflare/wrangler2/issues/570
+
+- [#1801](https://github.com/cloudflare/wrangler2/pull/1801) [`07fc90d6`](https://github.com/cloudflare/wrangler2/commit/07fc90d60912d6906a4b419db8cefc501e693473) Thanks [@rozenmd](https://github.com/rozenmd)! - feat: multi-worker testing
+
+  This change introduces the ability to test multi-worker setups via the wrangler API's [unstable_dev](https://developers.cloudflare.com/workers/wrangler/api/#unstable_dev) function.
+
+  Usage:
+
+  ```js
+  import { unstable_dev } from "wrangler";
+
+  /**
+   * Note: if you shut down the first worker you spun up,
+   * the parent worker won't know the child worker exists
+   * and your tests will fail
+   */
+  describe("multi-worker testing", () => {
+  	let childWorker;
+  	let parentWorker;
+
+  	beforeAll(async () => {
+  		childWorker = await unstable_dev(
+  			"src/child-worker.js",
+  			{ config: "src/child-wrangler.toml" },
+  			{ disableExperimentalWarning: true }
+  		);
+  		parentWorker = await unstable_dev(
+  			"src/parent-worker.js",
+  			{ config: "src/parent-wrangler.toml" },
+  			{ disableExperimentalWarning: true }
+  		);
+  	});
+
+  	afterAll(async () => {
+  		await childWorker.stop();
+  		await parentWorker.stop();
+  	});
+
+  	it("childWorker should return Hello World itself", async () => {
+  		const resp = await childWorker.fetch();
+  		if (resp) {
+  			const text = await resp.text();
+  			expect(text).toMatchInlineSnapshot(`"Hello World!"`);
+  		}
+  	});
+
+  	it("parentWorker should return Hello World by invoking the child worker", async () => {
+  		const resp = await parentWorker.fetch();
+  		if (resp) {
+  			const parsedResp = await resp.text();
+  			expect(parsedResp).toEqual("Parent worker sees: Hello World!");
+  		}
+  	});
+  });
+  ```
+
+* [#1865](https://github.com/cloudflare/wrangler2/pull/1865) [`adfc52d6`](https://github.com/cloudflare/wrangler2/commit/adfc52d6961ca3a43c846d7bce62a5864a80b373) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - polish: loglevel flag
+  Added a '--log-level' flag that allows the user to specify between 'debug', 'info', 'log', 'warning', 'error', 'none'
+  Currently 'none' will turn off all outputs in Miniflare (local mode), however, Wrangler will still output Errors.
+
+  resolves #185
+
+- [#1861](https://github.com/cloudflare/wrangler2/pull/1861) [`3d51d553`](https://github.com/cloudflare/wrangler2/commit/3d51d5536d1c125142bfea1879609411905051ce) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Add 'charset' to 'Content-Type' on 'wrangler pages dev' responses
+
+* [#1867](https://github.com/cloudflare/wrangler2/pull/1867) [`5a6ccc58`](https://github.com/cloudflare/wrangler2/commit/5a6ccc584dffcbc0ae176bed7102dda8e50cdbea) Thanks [@cameron-robey](https://github.com/cameron-robey)! - fix: handle logging of empty map/set/weak-map/weak-set
+
+- [#1882](https://github.com/cloudflare/wrangler2/pull/1882) [`ba0aed63`](https://github.com/cloudflare/wrangler2/commit/ba0aed63903d88ca2111084558625935cf7daddb) Thanks [@rozenmd](https://github.com/rozenmd)! - chore: refactor remote.tsx to only destructure when necessary
+
+## 2.1.4
+
+### Patch Changes
+
+- [#1843](https://github.com/cloudflare/wrangler2/pull/1843) [`c5ee6dee`](https://github.com/cloudflare/wrangler2/commit/c5ee6deec547a69dc092cbcda2df212a6836013f) Thanks [@rozenmd](https://github.com/rozenmd)! - feat: teach wrangler init how to write js tests
+
+* [#1856](https://github.com/cloudflare/wrangler2/pull/1856) [`6aae958a`](https://github.com/cloudflare/wrangler2/commit/6aae958aafc7a2a5be8853214438bc7c1ccda939) Thanks [@rozenmd](https://github.com/rozenmd)! - feat: add vitest as a test runner option
+
+- [#1839](https://github.com/cloudflare/wrangler2/pull/1839) [`2660872a`](https://github.com/cloudflare/wrangler2/commit/2660872a391b6c4662889bfdd5fda035f48ca54d) Thanks [@cameron-robey](https://github.com/cameron-robey)! - feat: make it possible to specify a path for `unstable_dev()`'s fetch method
+
+  ```
+  const worker = await unstable_dev(
+    "script.js"
+  );
+  const res = await worker.fetch(req);
+  ```
+
+  where `req` can be anything from `RequestInfo`: `string | URL | Request`.
+
+* [#1851](https://github.com/cloudflare/wrangler2/pull/1851) [`afca1b6c`](https://github.com/cloudflare/wrangler2/commit/afca1b6c47933ddb22ccb3317fbd4976c5b926c8) Thanks [@cameron-robey](https://github.com/cameron-robey)! - feat: summary output for secret:bulk
+
+  When wrangler `secret:bulk <json>` is run, a summary is outputted at the end with the number of secrets successfully / unsuccessfully created.
+
+- [#1847](https://github.com/cloudflare/wrangler2/pull/1847) [`5726788f`](https://github.com/cloudflare/wrangler2/commit/5726788fa1b50765c8455c98f508acffad6ca588) Thanks [@rozenmd](https://github.com/rozenmd)! - chore: add instructions as part of wrangler init for testing
+
+* [#1846](https://github.com/cloudflare/wrangler2/pull/1846) [`f450e387`](https://github.com/cloudflare/wrangler2/commit/f450e387f61cf7e28b84fefd018d9758b7b2c931) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: when running `wrangler init`, add a `test` script to package.json when the user asks us to write their first test
+
+- [#1837](https://github.com/cloudflare/wrangler2/pull/1837) [`aa5ede62`](https://github.com/cloudflare/wrangler2/commit/aa5ede624d9b9465dbe80cdfe2b21b85a8a217ba) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: explicitly export UnstableDevWorker type
+
+* [#1779](https://github.com/cloudflare/wrangler2/pull/1779) [`974f3311`](https://github.com/cloudflare/wrangler2/commit/974f3311145175f77baacbf0b41fd81865c99159) Thanks [@WalshyDev](https://github.com/WalshyDev)! - Add debug outputs to the exchange request
+
+## 2.1.3
+
+### Patch Changes
+
+- [#1836](https://github.com/cloudflare/wrangler2/pull/1836) [`3583f313`](https://github.com/cloudflare/wrangler2/commit/3583f313f50d1b0ba703286a44842d1c70b730e9) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: wrangler publish for CI after a manual deployment
+
+  Prior to this change, if you edited your Worker via the Cloudflare Dashboard, then used CI to deploy your script, `wrangler publish` would fail.
+
+  This change logs a warning that your manual changes are going to be overriden, but doesn't require user input to proceed.
+
+  Closes #1832
+
+* [#1644](https://github.com/cloudflare/wrangler2/pull/1644) [`dc1c9595`](https://github.com/cloudflare/wrangler2/commit/dc1c959548b41c617dd220ff3b222c076b62ea78) Thanks [@geelen](https://github.com/geelen)! - Deprecated --experimental-enable-local-persistence.
+
+  Added --persist and --persist-to in its place. Changed the default persistence directory to .wrangler/state, relative to wrangler.toml.
+
+  To migrate to the new flag, run `mkdir -p .wrangler && mv wrangler-local-state .wrangler/state` then use `--persist`. Alternatively, you can use `--persist-to=./wrangler-local-state` to keep using the files in the old location.
+
+## 2.1.2
+
+### Patch Changes
+
+- [#1833](https://github.com/cloudflare/wrangler2/pull/1833) [`b1622395`](https://github.com/cloudflare/wrangler2/commit/b1622395641057b1eda0d165951fd9079036fefc) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: \_headers and \_redirects parsing in 'wrangler pages dev'
+
+## 2.1.1
+
+### Patch Changes
+
+- [#1827](https://github.com/cloudflare/wrangler2/pull/1827) [`32a58fee`](https://github.com/cloudflare/wrangler2/commit/32a58fee8efd2c0c07dcb75ad5e52cbca8785b12) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - fix: Publish error when deploying new Workers
+
+  This fix adds a try/catch when checking when the Worker was last deployed.
+
+  The check was failing when a Worker had never been deployed, causing deployments of new Workers to fail.
+
+  fixes #1824
+
+* [#1799](https://github.com/cloudflare/wrangler2/pull/1799) [`a89786ba`](https://github.com/cloudflare/wrangler2/commit/a89786ba3b08a7cd7c074c52b6b83ab91223dddf) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - feat: Bulk Secret Upload
+  Created a flag that allows for passing in a JSON file with key/value's of secrets.
+
+  resolve #1610
+
+## 2.1.0
+
+### Minor Changes
+
+- [#1713](https://github.com/cloudflare/wrangler2/pull/1713) [`82451e9d`](https://github.com/cloudflare/wrangler2/commit/82451e9dbb12447f487904788a6e82b184c83722) Thanks [@jspspike](https://github.com/jspspike)! - Tail now uses updated endpoint. Allows tailing workers that are above the normal "invocations per second" limit when using the `--ip self` filter.
+
+### Patch Changes
+
+- [#1745](https://github.com/cloudflare/wrangler2/pull/1745) [`1a13e483`](https://github.com/cloudflare/wrangler2/commit/1a13e483398fb13239c3a5a58efbf4b30c47857e) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: let users know when we'll use their proxy for requests
+
+* [#1782](https://github.com/cloudflare/wrangler2/pull/1782) [`cc43e3c4`](https://github.com/cloudflare/wrangler2/commit/cc43e3c491aef432a52c15f43ecd4005c1400211) Thanks [@jahands](https://github.com/jahands)! - fix: Update Pages test to assert version in package.json
+
+  This test was asserting a hardcoded wrangler version which broke after release.
+
+- [#1786](https://github.com/cloudflare/wrangler2/pull/1786) [`1af49b68`](https://github.com/cloudflare/wrangler2/commit/1af49b68d3189b8ded0d53a2a88cf08d792abf2a) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: refactor unstable_dev to avoid race conditions with ports
+
+  Prior to this change, wrangler would check to see if a port was available, do a bit more work, then try use that port when starting miniflare. With this change, we're using port 0 to tell Node to assign us a random free port.
+
+  To make this change work, we had to do some plumbing so miniflare can tell us the host and port it's using, so we can call fetch against it.
+
+* [#1795](https://github.com/cloudflare/wrangler2/pull/1795) [`c17f6d3d`](https://github.com/cloudflare/wrangler2/commit/c17f6d3d1efee7bbaa4de48dc01ff6b7b1f40c1e) Thanks [@mrbbot](https://github.com/mrbbot)! - Upgrade `miniflare` to [`2.8`](https://github.com/cloudflare/miniflare/releases/tag/v2.8.0)
+
+- [#1788](https://github.com/cloudflare/wrangler2/pull/1788) [`152a1e81`](https://github.com/cloudflare/wrangler2/commit/152a1e81cb6967a701973faaf85ddc03404b866a) Thanks [@GregBrimble](https://github.com/GregBrimble)! - chore: Refactor 'wrangler pages dev' to use the same code as we do in production
+
+  This will make our dev implementation an even closer simulation of production, and will make maintenance easier going forward.
+
+* [#1789](https://github.com/cloudflare/wrangler2/pull/1789) [`b21ee41a`](https://github.com/cloudflare/wrangler2/commit/b21ee41ae66d739f2db496a73acfcbf57ef45c0e) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - fix: getMonth compatibility date
+  Set correct month for `compatibility_date` when initializing a new Worker
+
+  resolves #1766
+
+- [#1694](https://github.com/cloudflare/wrangler2/pull/1694) [`3fb730a3`](https://github.com/cloudflare/wrangler2/commit/3fb730a33d36bbb6a4270c8d4a3a80fd506a9ad1) Thanks [@yjl9903](https://github.com/yjl9903)! - feat: starting pages dev server doesn't require command when proxy port provided
+
+* [#1729](https://github.com/cloudflare/wrangler2/pull/1729) [`ebb5b88f`](https://github.com/cloudflare/wrangler2/commit/ebb5b88fbcba30fca3beb3900c2429218aad5ed2) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - feat: autogenerated config from dash
+
+  Makes `wrangler init`'s `--from-dash` option pull in data from Cloudflare's dashboard to generate a wrangler.toml file populated with configuration from an existing Worker.
+  This is a first step towards making `wrangler init` more useful for folks who are already using Cloudflare's products on the Dashboard.
+
+  related discussion #1623
+  resolves #1638
+
+- [#1781](https://github.com/cloudflare/wrangler2/pull/1781) [`603d0b35`](https://github.com/cloudflare/wrangler2/commit/603d0b35074e2c59484e39305e0b01121de20f15) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - feat: Publish Origin Messaging
+  feat: warn about potential conflicts during `publish` and `init --from-dash`.
+
+  - If publishing to a worker that has been modified in the dashboard, warn that the dashboard changes will be overwritten.
+  - When initializing from the dashboard, warn that future changes via the dashboard will not automatically appear in the local Worker config.
+
+  resolves #1737
+
+* [#1735](https://github.com/cloudflare/wrangler2/pull/1735) [`de29a445`](https://github.com/cloudflare/wrangler2/commit/de29a4459750cf229fb563bcc8191ab3ad77bf4d) Thanks [@cameron-robey](https://github.com/cameron-robey)! - feat: new internal middleware
+
+  A new way of registering middleware that gets bundled and executed on the edge.
+
+  - the same middleware functions can be used for both modules workers and service workers
+  - only requires running esbuild a fixed number of times, rather than for each middleware added
+
+## 2.0.29
+
+### Patch Changes
+
+- [#1731](https://github.com/cloudflare/wrangler2/pull/1731) [`16f051d3`](https://github.com/cloudflare/wrangler2/commit/16f051d36e8c205374e5ac38b141def45095e3ef) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - Add custom \_routes.json support for Pages Functions projects
+
+* [#1762](https://github.com/cloudflare/wrangler2/pull/1762) [`23f89216`](https://github.com/cloudflare/wrangler2/commit/23f8921628baf32f0cace1ebf893964a26afe91a) Thanks [@petebacondarwin](https://github.com/petebacondarwin)! - Use getBasePath() when trying to specify paths to files relative to the
+  base of the Wrangler package directory rather than trying to compute the
+  path from Node.js constants like **dirname and **filename. This is
+  because the act of bundling the source code can move the file that contains
+  these constants around potentially breaking the relative path to the desired files.
+
+  Fixes #1755
+
+- [#1763](https://github.com/cloudflare/wrangler2/pull/1763) [`75f3ae82`](https://github.com/cloudflare/wrangler2/commit/75f3ae829b0b4f8ae2cf2093bda93e8096838240) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - Add `description` field to \_routes.json
+
+  When generating routes for Functions projects, let's add a description
+  so we know what wrangler version generated this config
+
+* [#1538](https://github.com/cloudflare/wrangler2/pull/1538) [`2c9caf74`](https://github.com/cloudflare/wrangler2/commit/2c9caf74bdf3f60db7c244b2202f358abe5ced1f) Thanks [@rozenmd](https://github.com/rozenmd)! - chore: refactor wrangler.dev API to not need React/Ink
+
+  Prior to this change, `wrangler.unstable_dev()` would only support running one instance of wrangler at a time, as Ink only lets you render one instance of React. This resulted in test failures in CI.
+
+  This change creates pure JS/TS versions of these React hooks:
+
+  - useEsbuild
+  - useLocalWorker
+  - useCustomBuild
+  - useTmpDir
+
+  As a side-effect of removing React, tests should run faster in CI.
+
+  Closes #1432
+  Closes #1419
+
+- [#1775](https://github.com/cloudflare/wrangler2/pull/1775) [`8163b8cf`](https://github.com/cloudflare/wrangler2/commit/8163b8cfde8020d76bd64090276347b01b4a8f8d) Thanks [@CarmenPopoviciu](https://github.com/CarmenPopoviciu)! - Add unit tests for `wrangler pages publish`
+
+## 2.0.28
+
+### Patch Changes
+
+- [#1725](https://github.com/cloudflare/wrangler2/pull/1725) [`eb75413e`](https://github.com/cloudflare/wrangler2/commit/eb75413ec35f6d4f6306601f4d5c9d058f794a18) Thanks [@threepointone](https://github.com/threepointone)! - rename: `worker_namespaces` / `dispatch_namespaces`
+
+  The Worker-for-Platforms team would like to rename this field to more closely match what it's called internally. This fix does a search+replace on this term. This feature already had an experimental warning, and no one's using it at the moment, so we're not going to add a warning/backward compat for existing customers.
+
+* [#1736](https://github.com/cloudflare/wrangler2/pull/1736) [`800f8553`](https://github.com/cloudflare/wrangler2/commit/800f8553b25bb0641fd5e9b38eb5d9ca02abe24c) Thanks [@threepointone](https://github.com/threepointone)! - fix: do not delete previously defined plain_text/json bindings on publish
+
+  Currently, when we publish a worker, we delete an pre-existing bindings if they're not otherwise defined in `wrangler.toml`, and overwrite existing ones. But folks may be deploying with wrangler, and changing environment variables on the fly (like marketing messages, etc). It's annoying when deploying via wrangler blows away those values.
+
+  This patch fixes one of those issues. It will not delete any older bindings that are not in wrangler.toml. It still _does_ overwrite existing vars, but at least this gives a way for developers to have some vars that are not blown away on every publish.
+
+- [#1726](https://github.com/cloudflare/wrangler2/pull/1726) [`0b83504c`](https://github.com/cloudflare/wrangler2/commit/0b83504c12b35301acaeb5302c0d16021c958f8e) Thanks [@GregBrimble](https://github.com/GregBrimble)! - fix: Multiworker and static asset dev bug preventing both from being used
+
+  There was previously a collision on the generated filenames which resulted in the generated scripts looping and crashing in Miniflare with error code 7. By renaming one of the generated files, this is avoided.
+
+* [#1718](https://github.com/cloudflare/wrangler2/pull/1718) [`02f1fe9b`](https://github.com/cloudflare/wrangler2/commit/02f1fe9b07bb08b7395e7de1d78cc929221b464f) Thanks [@threepointone](https://github.com/threepointone)! - fix: use `config.dev.ip` when provided
+
+  Because we'd used a default for 0.0.0.0 for the `--ip` flag, `wrangler dev` was overriding the value specified in `wrangler.toml` under `dev.ip`. This fix removes the default value (since it's being set when normalising config anyway).
+
+  Fixes https://github.com/cloudflare/wrangler2/issues/1714
+
+- [#1727](https://github.com/cloudflare/wrangler2/pull/1727) [`3f9e8f63`](https://github.com/cloudflare/wrangler2/commit/3f9e8f634e6544bf3aef8748f56041a077758ab2) Thanks [@rozenmd](https://github.com/rozenmd)! - fix: refresh token when we detect that the preview session has expired (error code 10049)
+
+  When running `wrangler dev`, from time to time the preview session token would expire, and the dev server would need to be manually restarted. This fixes this, by refreshing the token when it expires.
+
+  Closes #1446
+
+* [#1730](https://github.com/cloudflare/wrangler2/pull/1730) [`27ad80ee`](https://github.com/cloudflare/wrangler2/commit/27ad80eed7f25393a0e5c1d8a62c3b0e743a639d) Thanks [@threepointone](https://github.com/threepointone)! - feat: `--var name:value` and `--define name:value`
+
+  This enables passing values for `[vars]` and `[define]` via the cli. We have a number of usecases where the values to be injected during dev/publish aren't available statically (eg: a version string, some identifier for 3p libraries, etc) and reading those values only from `wrangler.toml` isn't good ergonomically. So we can now read those values when passed through the CLI.
+
+  Example: add a var during dev: `wrangler dev --var xyz:123` will inject the var `xyz` with string `"123"`
+
+  (note, only strings allowed for `--var`)
+
+  substitute a global value: `wrangler dev --define XYZ:123` will replace every global identifier `XYZ` with the value `123`.
+
+  The same flags also work with `wrangler publish`.
+
+  Also, you can use actual environment vars in these commands. e.g.: `wrangler dev --var xyz:$XYZ` will set `xyz` to whatever `XYZ` has been set to in the terminal environment.
+
+- [#1700](https://github.com/cloudflare/wrangler2/pull/1700) [`d7c23e49`](https://github.com/cloudflare/wrangler2/commit/d7c23e49706cb8fdb6eb71ece9fb4eca14c62df8) Thanks [@penalosa](https://github.com/penalosa)! - Closes [#1505](https://github.com/cloudflare/wrangler2/issues/1505) by extending `wrangler tail` to allow for passing worker routes as well as worker script names.
+
+  For example, if you have a worker `example-worker` assigned to the route `example.com/*`, you can retrieve it's logs by running either `wrangler tail example.com/*` or `wrangler tail example-worker`—previously only `wrangler tail example-worker` was supported.
+
+* [#1720](https://github.com/cloudflare/wrangler2/pull/1720) [`f638de64`](https://github.com/cloudflare/wrangler2/commit/f638de6426619a899367ba41674179b8ca67c6ab) Thanks [@mrbbot](https://github.com/mrbbot)! - Upgrade `miniflare` to [`2.7.1`](https://github.com/cloudflare/miniflare/releases/tag/v2.7.1) incorporating changes from [`2.7.0`](https://github.com/cloudflare/miniflare/releases/tag/v2.7.0)
+
+- [#1691](https://github.com/cloudflare/wrangler2/pull/1691) [`5b2c3ee2`](https://github.com/cloudflare/wrangler2/commit/5b2c3ee2c5d65b25c966ca07751f544f282525b9) Thanks [@cameron-robey](https://github.com/cameron-robey)! - chore: bump undici and increase minimum node version to 16.13
+
+  - We bump undici to version to 5.9.1 to patch some security vulnerabilities in previous versions
+  - This requires bumping the minimum node version to >= 16.8 so we update the minimum to the LTS 16.13
+
+  Fixes https://github.com/cloudflare/wrangler2/issues/1679
+  Fixes https://github.com/cloudflare/wrangler2/issues/1684
+
 ## 2.0.27
 
 ### Patch Changes

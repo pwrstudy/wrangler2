@@ -19,6 +19,7 @@ type EventContext<Env, P extends string, Data> = {
 	request: Request;
 	functionPath: string;
 	waitUntil: (promise: Promise<unknown>) => void;
+	passThroughOnException: () => void;
 	next: (input?: Request | string, init?: RequestInit) => Promise<Response>;
 	env: Env & { ASSETS: { fetch: typeof fetch } };
 	params: Params<P>;
@@ -29,6 +30,7 @@ type EventPluginContext<Env, P extends string, Data, PluginArgs> = {
 	request: Request;
 	functionPath: string;
 	waitUntil: (promise: Promise<unknown>) => void;
+	passThroughOnException: () => void;
 	next: (input?: Request | string, init?: RequestInit) => Promise<Response>;
 	env: Env & { ASSETS: { fetch: typeof fetch } };
 	params: Params<P>;
@@ -117,14 +119,15 @@ function* executeRequest(request: Request, relativePathname: string) {
 	}
 }
 
-export default function (pluginArgs) {
+export default function (pluginArgs: unknown) {
 	const onRequest: PagesPluginFunction = async (workerContext) => {
 		let { request } = workerContext;
 		const { env, next, data } = workerContext;
 
 		const url = new URL(request.url);
+		// TODO: Replace this with something actually legible.
 		const relativePathname = `/${
-			url.pathname.split(workerContext.functionPath)[1] || ""
+			url.pathname.replace(workerContext.functionPath, "") || ""
 		}`.replace(/^\/\//, "/");
 
 		const handlerIterator = executeRequest(request, relativePathname);
@@ -146,15 +149,13 @@ export default function (pluginArgs) {
 					pluginArgs,
 					env,
 					waitUntil: workerContext.waitUntil.bind(workerContext),
+					passThroughOnException:
+						workerContext.passThroughOnException.bind(workerContext),
 				};
 
 				const response = await handler(context);
 
-				// https://fetch.spec.whatwg.org/#null-body-status
-				return new Response(
-					[101, 204, 205, 304].includes(response.status) ? null : response.body,
-					{ ...response, headers: new Headers(response.headers) }
-				);
+				return cloneResponse(response);
 			} else {
 				return next();
 			}
@@ -165,3 +166,11 @@ export default function (pluginArgs) {
 
 	return onRequest;
 }
+
+// This makes a Response mutable
+const cloneResponse = (response: Response) =>
+	// https://fetch.spec.whatwg.org/#null-body-status
+	new Response(
+		[101, 204, 205, 304].includes(response.status) ? null : response.body,
+		response
+	);

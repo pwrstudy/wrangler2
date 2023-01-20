@@ -5,13 +5,13 @@ import { watch } from "chokidar";
 import clipboardy from "clipboardy";
 import commandExists from "command-exists";
 import { Box, Text, useApp, useInput, useStdin } from "ink";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { withErrorBoundary, useErrorHandler } from "react-error-boundary";
 import onExit from "signal-exit";
 import tmp from "tmp-promise";
 import { fetch } from "undici";
 import {
-	getRegisteredWorkers,
+	getBoundRegisteredWorkers,
 	startWorkerRegistry,
 	stopWorkerRegistry,
 	unregisterWorker,
@@ -28,7 +28,7 @@ import type { Config } from "../config";
 import type { Route } from "../config/environment";
 import type { WorkerRegistry } from "../dev-registry";
 import type { Entry } from "../entry";
-import type { EnablePagesAssetsServiceBindingOptions } from "../miniflare-cli";
+import type { EnablePagesAssetsServiceBindingOptions } from "../miniflare-cli/types";
 import type { AssetPaths } from "../sites";
 import type { CfWorkerInit } from "../worker";
 
@@ -53,32 +53,21 @@ function useDevRegistry(
 			logger.error("failed to start worker registry", err);
 		});
 
-		const serviceNames = (services || []).map(
-			(serviceBinding) => serviceBinding.service
-		);
-		const durableObjectServices = (
-			durableObjects || { bindings: [] }
-		).bindings.map((durableObjectBinding) => durableObjectBinding.script_name);
-
 		const interval =
 			// TODO: enable this for remote mode as well
 			// https://github.com/cloudflare/wrangler2/issues/1182
 			mode === "local"
 				? setInterval(() => {
-						getRegisteredWorkers().then(
-							(workerDefinitions: WorkerRegistry | undefined) => {
-								// We only want the workers that we're bound to
-								// so let's filter out the others
-								const filteredWorkers = Object.fromEntries(
-									Object.entries(workerDefinitions || {}).filter(
-										([key, _value]) =>
-											serviceNames.includes(key) ||
-											durableObjectServices.includes(key)
-									)
-								);
+						getBoundRegisteredWorkers({
+							services,
+							durableObjects,
+						}).then(
+							(boundRegisteredWorkers: WorkerRegistry | undefined) => {
 								setWorkers((prevWorkers) => {
-									if (!util.isDeepStrictEqual(filteredWorkers, prevWorkers)) {
-										return filteredWorkers;
+									if (
+										!util.isDeepStrictEqual(boundRegisteredWorkers, prevWorkers)
+									) {
+										return boundRegisteredWorkers || {};
 									}
 									return prevWorkers;
 								});
@@ -124,8 +113,8 @@ export type DevProps = {
 	name: string | undefined;
 	noBundle: boolean;
 	entry: Entry;
-	port: number;
-	ip: string;
+	initialPort: number;
+	initialIp: string;
 	inspectorPort: number;
 	rules: Config["rules"];
 	accountId: string | undefined;
@@ -136,11 +125,12 @@ export type DevProps = {
 	upstreamProtocol: "https" | "http";
 	localProtocol: "https" | "http";
 	localUpstream: string | undefined;
-	enableLocalPersistence: boolean;
+	localPersistencePath: string | null;
 	liveReload: boolean;
 	bindings: CfWorkerInit["bindings"];
 	define: Config["define"];
 	crons: Config["triggers"]["crons"];
+	queueConsumers: Config["queues"]["consumers"];
 	isWorkersSite: boolean;
 	assetPaths: AssetPaths | undefined;
 	assetsConfig: Config["assets"];
@@ -156,14 +146,16 @@ export type DevProps = {
 	host: string | undefined;
 	routes: Route[] | undefined;
 	inspect: boolean;
-	logLevel: "none" | "error" | "log" | "warn" | "debug" | undefined;
 	logPrefix?: string;
-	onReady: (() => void) | undefined;
+	onReady: ((ip: string, port: number) => void) | undefined;
 	showInteractiveDevSession: boolean | undefined;
 	forceLocal: boolean | undefined;
 	enablePagesAssetsServiceBinding?: EnablePagesAssetsServiceBindingOptions;
 	firstPartyWorker: boolean | undefined;
 	sendMetrics: boolean | undefined;
+	testScheduled: boolean | undefined;
+	experimentalLocal: boolean | undefined;
+	experimentalLocalRemoteKv: boolean | undefined;
 };
 
 export function DevImplementation(props: DevProps): JSX.Element {
@@ -179,25 +171,42 @@ export function DevImplementation(props: DevProps): JSX.Element {
 	);
 }
 
+// This is a nasty hack to allow `useHotkeys` and its "[b] open a browser" feature to read these values
+// without triggering a re-render loop when `onReady()` updates them.
+// The initially requested port can be different than what's actually used, if, for example, you request port 0.
+let ip: string;
+let port: number;
+
 function InteractiveDevSession(props: DevProps) {
 	const toggles = useHotkeys({
 		initial: {
 			local: props.initialMode === "local",
 			tunnel: false,
 		},
-		port: props.port,
-		ip: props.ip,
 		inspectorPort: props.inspectorPort,
 		inspect: props.inspect,
 		localProtocol: props.localProtocol,
 		forceLocal: props.forceLocal,
 	});
 
+	ip = props.initialIp;
+	port = props.initialPort;
+
 	useTunnel(toggles.tunnel);
+
+	const onReady = (newIp: string, newPort: number) => {
+		if (newIp !== props.initialIp || newPort !== props.initialPort) {
+			ip = newIp;
+			port = newPort;
+			if (props.onReady) {
+				props.onReady(newIp, newPort);
+			}
+		}
+	};
 
 	return (
 		<>
-			<DevSession {...props} local={toggles.local} />
+			<DevSession {...props} local={toggles.local} onReady={onReady} />
 			<Box borderStyle="round" paddingLeft={1} paddingRight={1}>
 				<Text bold={true}>[b]</Text>
 				<Text> open a browser, </Text>
@@ -224,12 +233,46 @@ function InteractiveDevSession(props: DevProps) {
 
 type DevSessionProps = DevProps & {
 	local: boolean;
+	experimentalLocal?: boolean;
 };
 
 function DevSession(props: DevSessionProps) {
 	useCustomBuild(props.entry, props.build);
 
 	const directory = useTmpDir();
+	const handleError = useErrorHandler();
+
+	// Note: when D1 is out of beta, this (and all instances of `betaD1Shims`) can be removed.
+	// Additionally, useMemo is used so that new arrays aren't created on every render
+	// cause re-rendering further down.
+	const betaD1Shims = useMemo(
+		() => props.bindings.d1_databases?.map((db) => db.binding),
+		[props.bindings.d1_databases]
+	);
+	const everyD1BindingHasPreview = props.bindings.d1_databases?.every(
+		(binding) => binding.preview_database_id
+	);
+	if (
+		betaD1Shims &&
+		betaD1Shims.length > 0 &&
+		!(props.local || everyD1BindingHasPreview)
+	) {
+		handleError(
+			new Error(
+				"D1 bindings require dev --local or preview_database_id for now"
+			)
+		);
+	}
+
+	// If we are using d1 bindings, and are not bundling the worker
+	// we should error here as the d1 shim won't be added
+	if (Array.isArray(betaD1Shims) && betaD1Shims.length > 0 && props.noBundle) {
+		handleError(
+			new Error(
+				"While in beta, you cannot use D1 bindings without bundling your worker. Please remove `no_bundle` from your wrangler.toml file or remove the `--no-bundle` flag to access D1 bindings."
+			)
+		);
+	}
 
 	const workerDefinitions = useDevRegistry(
 		props.name,
@@ -250,6 +293,7 @@ function DevSession(props: DevSessionProps) {
 		tsconfig: props.tsconfig,
 		minify: props.minify,
 		nodeCompat: props.nodeCompat,
+		betaD1Shims,
 		define: props.define,
 		noBundle: props.noBundle,
 		assets: props.assetsConfig,
@@ -257,7 +301,38 @@ function DevSession(props: DevSessionProps) {
 		services: props.bindings.services,
 		durableObjects: props.bindings.durable_objects || { bindings: [] },
 		firstPartyWorkerDevFacade: props.firstPartyWorker,
+		local: props.local,
+		// Enable the bundling to know whether we are using dev or publish
+		targetConsumer: "dev",
+		testScheduled: props.testScheduled ?? false,
+		experimentalLocal: props.experimentalLocal,
 	});
+
+	// TODO(queues) support remote wrangler dev
+	if (
+		!props.local &&
+		(props.bindings.queues?.length || props.queueConsumers?.length)
+	) {
+		logger.warn(
+			"Queues are currently in Beta and are not supported in wrangler dev remote mode."
+		);
+	}
+
+	const announceAndOnReady: typeof props.onReady = (finalIp, finalPort) => {
+		if (process.send) {
+			process.send(
+				JSON.stringify({
+					event: "DEV_SERVER_READY",
+					ip: finalIp,
+					port: finalPort,
+				})
+			);
+		}
+
+		if (props.onReady) {
+			props.onReady(finalIp, finalPort);
+		}
+	};
 
 	return props.local ? (
 		<Local
@@ -270,20 +345,23 @@ function DevSession(props: DevSessionProps) {
 			bindings={props.bindings}
 			workerDefinitions={workerDefinitions}
 			assetPaths={props.assetPaths}
-			port={props.port}
-			ip={props.ip}
+			initialPort={props.initialPort}
+			initialIp={props.initialIp}
 			rules={props.rules}
 			inspectorPort={props.inspectorPort}
-			enableLocalPersistence={props.enableLocalPersistence}
+			localPersistencePath={props.localPersistencePath}
 			liveReload={props.liveReload}
 			crons={props.crons}
+			queueConsumers={props.queueConsumers}
 			localProtocol={props.localProtocol}
 			localUpstream={props.localUpstream}
-			logLevel={props.logLevel}
 			logPrefix={props.logPrefix}
 			inspect={props.inspect}
-			onReady={props.onReady}
+			onReady={announceAndOnReady}
 			enablePagesAssetsServiceBinding={props.enablePagesAssetsServiceBinding}
+			experimentalLocal={props.experimentalLocal}
+			accountId={props.accountId}
+			experimentalLocalRemoteKv={props.experimentalLocalRemoteKv}
 		/>
 	) : (
 		<Remote
@@ -294,8 +372,8 @@ function DevSession(props: DevSessionProps) {
 			bindings={props.bindings}
 			assetPaths={props.assetPaths}
 			isWorkersSite={props.isWorkersSite}
-			port={props.port}
-			ip={props.ip}
+			port={props.initialPort}
+			ip={props.initialIp}
 			localProtocol={props.localProtocol}
 			inspectorPort={props.inspectorPort}
 			// TODO: @threepointone #1167
@@ -309,7 +387,7 @@ function DevSession(props: DevSessionProps) {
 			zone={props.zone}
 			host={props.host}
 			routes={props.routes}
-			onReady={props.onReady}
+			onReady={announceAndOnReady}
 			sourceMapPath={bundle?.sourceMapPath}
 			sendMetrics={props.sendMetrics}
 		/>
@@ -363,7 +441,7 @@ function useCustomBuild(expectedEntry: Entry, build: Config["build"]): void {
 		}
 
 		return () => {
-			watcher?.close();
+			void watcher?.close();
 		};
 	}, [build, expectedEntry]);
 }
@@ -458,25 +536,16 @@ type useHotkeysInitialState = {
 };
 function useHotkeys(props: {
 	initial: useHotkeysInitialState;
-	port: number;
-	ip: string;
 	inspectorPort: number;
 	inspect: boolean;
 	localProtocol: "http" | "https";
 	forceLocal: boolean | undefined;
 }) {
-	const {
-		initial,
-		port,
-		ip,
-		inspectorPort,
-		inspect,
-		localProtocol,
-		forceLocal,
-	} = props;
+	const { initial, inspectorPort, inspect, localProtocol, forceLocal } = props;
 	// UGH, we should put port in context instead
 	const [toggles, setToggles] = useState(initial);
 	const { exit } = useApp();
+
 	useInput(
 		async (
 			input,

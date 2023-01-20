@@ -8,7 +8,7 @@ jobs:
   prerelease:
     if: ${{ github.repository_owner == 'cloudflare' }}
     name: Build & Publish a beta release to NPM
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repo
@@ -22,14 +22,26 @@ jobs:
           node-version: 16.13
           cache: "npm" # cache ~/.npm in case 'npm ci' needs to run
 
+      - name: Install workerd Dependencies
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y libc++1
+
       - name: Install NPM Dependencies
         run: npm ci
 
       - name: Modify package.json version
         run: node .github/version-script.js
 
+      - name: Build
+        run: npm run build
+
       - name: Check for errors
         run: npm run check
+        env:
+          NODE_OPTIONS: "--max_old_space_size=8192"
 
       - name: Publish Beta to NPM
         run: npm publish --tag beta
@@ -47,7 +59,7 @@ jobs:
     if: ${{ github.repository_owner == 'cloudflare' }}
     name: Publish Prerelease Registry
     needs: prerelease
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repo
@@ -60,6 +72,13 @@ jobs:
         with:
           node-version: 16.13
           cache: "npm" # cache ~/.npm in case 'npm ci' needs to run
+
+      - name: Install workerd Dependencies
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y libc++1
 
       - name: Install NPM Dependencies
         run: npm ci

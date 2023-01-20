@@ -1,12 +1,17 @@
 import { join as pathJoin } from "node:path";
 import { toUrlPath } from "../../paths";
-import { MAX_FUNCTIONS_ROUTES_RULES, ROUTES_SPEC_VERSION } from "../constants";
+import {
+	MAX_FUNCTIONS_ROUTES_RULES,
+	ROUTES_SPEC_DESCRIPTION,
+	ROUTES_SPEC_VERSION,
+} from "../constants";
 import { consolidateRoutes } from "./routes-consolidation";
 import type { RouteConfig } from "./routes";
 
 /** Interface for _routes.json */
-interface RoutesJSONSpec {
+export interface RoutesJSONSpec {
 	version: typeof ROUTES_SPEC_VERSION;
+	description?: string;
 	include: string[];
 	exclude: string[];
 }
@@ -53,6 +58,7 @@ export function convertRoutesToRoutesJSONSpec(
 	const include = convertRoutesToGlobPatterns(reversedRoutes);
 	return optimizeRoutesJSONSpec({
 		version: ROUTES_SPEC_VERSION,
+		description: ROUTES_SPEC_DESCRIPTION,
 		include,
 		exclude: [],
 	});
@@ -106,17 +112,4 @@ export function compareRoutes(routeA: string, routeB: string) {
 
 	// all else equal, just sort the paths lexicographically
 	return routeA.localeCompare(routeB);
-}
-
-export function isRoutesJSONSpec(data: unknown): data is RoutesJSONSpec {
-	return (
-		(typeof data === "object" &&
-			data &&
-			"version" in data &&
-			typeof (data as RoutesJSONSpec).version === "number" &&
-			(data as RoutesJSONSpec).version === ROUTES_SPEC_VERSION &&
-			Array.isArray((data as RoutesJSONSpec).include) &&
-			Array.isArray((data as RoutesJSONSpec).exclude)) ||
-		false
-	);
 }

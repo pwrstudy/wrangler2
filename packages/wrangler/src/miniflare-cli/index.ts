@@ -4,29 +4,25 @@ import {
 	DurableObjectStub,
 } from "@miniflare/durable-objects";
 import {
-	Log,
-	LogLevel,
+	Log as MiniflareLog,
+	LogLevel as MiniflareLogLevel,
 	Miniflare,
-	Response as MiniflareResponse,
 	Request as MiniflareRequest,
+	Response as MiniflareResponse,
 } from "miniflare";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { FatalError } from "../errors";
 import generateASSETSBinding from "./assets";
-import { enumKeys } from "./enum-keys";
 import { getRequestContextCheckOptions } from "./request-context";
+import type { LoggerLevel } from "../logger";
 import type { Options } from "./assets";
+import type { EnablePagesAssetsServiceBindingOptions } from "./types";
 import type { AddressInfo } from "net";
-
-export interface EnablePagesAssetsServiceBindingOptions {
-	proxyPort?: number;
-	directory?: string;
-}
 
 // miniflare defines this but importing it throws:
 // Dynamic require of "path" is not supported
-class NoOpLog extends Log {
+class MiniflareNoOpLog extends MiniflareLog {
 	log(): void {}
 
 	error(message: Error): void {
@@ -35,65 +31,69 @@ class NoOpLog extends Log {
 }
 
 async function main() {
-	const args = await yargs(hideBin(process.argv))
-		.help(false)
-		.version(false)
-		.option("log", {
-			choices: enumKeys(LogLevel),
-		}).argv;
+	const args = await yargs(hideBin(process.argv)).help(false).version(false)
+		.argv;
 
-	const logLevel = LogLevel[args.log ?? "INFO"];
 	const requestContextCheckOptions = await getRequestContextCheckOptions();
 	const config = {
 		...JSON.parse((args._[0] as string) ?? "{}"),
 		...requestContextCheckOptions,
 	};
-	//miniflare's logLevel 0 still logs routes, so lets override the logger
-	config.log = config.disableLogs
-		? new NoOpLog()
-		: new Log(logLevel, config.logOptions);
 
-	if (logLevel > LogLevel.INFO) {
-		console.log("OPTIONS:\n", JSON.stringify(config, null, 2));
+	let logLevelString: Uppercase<LoggerLevel> = config.logLevel.toUpperCase();
+	if (logLevelString === "LOG") logLevelString = "INFO";
+	const logLevel = MiniflareLogLevel[logLevelString];
+
+	config.log =
+		logLevel === MiniflareLogLevel.NONE
+			? new MiniflareNoOpLog()
+			: new MiniflareLog(logLevel, config.logOptions);
+
+	if (logLevel === MiniflareLogLevel.DEBUG) {
+		console.log("MINIFLARE OPTIONS:\n", JSON.stringify(config, null, 2));
 	}
 
 	config.bindings = {
 		...config.bindings,
-		...Object.fromEntries(
-			Object.entries(
-				config.externalDurableObjects as Record<
-					string,
-					{ name: string; host: string; port: number }
-				>
-			).map(([binding, { name, host, port }]) => {
-				const factory = () => {
-					throw new FatalError(
-						"An external Durable Object instance's state has somehow been attempted to be accessed.",
-						1
-					);
-				};
-				const namespace = new DurableObjectNamespace(name as string, factory);
-				namespace.get = (id) => {
-					const stub = new DurableObjectStub(factory, id);
-					stub.fetch = (...reqArgs) => {
-						const requestFromArgs = new MiniflareRequest(...reqArgs);
-						const url = new URL(requestFromArgs.url);
-						url.host = host;
-						if (port !== undefined) url.port = port.toString();
-						const request = new MiniflareRequest(
-							url.toString(),
-							requestFromArgs
+		...(config.externalDurableObjects &&
+			Object.fromEntries(
+				Object.entries(
+					config.externalDurableObjects as Record<
+						string,
+						{ name: string; host: string; port: number }
+					>
+				).map(([binding, { name, host, port }]) => {
+					const factory = () => {
+						throw new FatalError(
+							"An external Durable Object instance's state has somehow been attempted to be accessed.",
+							1
 						);
-						request.headers.set("x-miniflare-durable-object-name", name);
-						request.headers.set("x-miniflare-durable-object-id", id.toString());
-
-						return fetch(request);
 					};
-					return stub;
-				};
-				return [binding, namespace];
-			})
-		),
+					const namespace = new DurableObjectNamespace(name as string, factory);
+					namespace.get = (id) => {
+						const stub = new DurableObjectStub(factory, id);
+						stub.fetch = (...reqArgs) => {
+							const requestFromArgs = new MiniflareRequest(...reqArgs);
+							const url = new URL(requestFromArgs.url);
+							url.host = host;
+							if (port !== undefined) url.port = port.toString();
+							const request = new MiniflareRequest(
+								url.toString(),
+								requestFromArgs
+							);
+							request.headers.set("x-miniflare-durable-object-name", name);
+							request.headers.set(
+								"x-miniflare-durable-object-id",
+								id.toString()
+							);
+
+							return fetch(request);
+						};
+						return stub;
+					};
+					return [binding, namespace];
+				})
+			)),
 	};
 
 	let mf: Miniflare | undefined;
@@ -116,6 +116,7 @@ async function main() {
 				log: config.log,
 				proxyPort: opts.proxyPort,
 				directory: opts.directory,
+				tre: false,
 			};
 
 			config.serviceBindings = {
@@ -125,7 +126,8 @@ async function main() {
 		}
 		mf = new Miniflare(config);
 		// Start Miniflare development server
-		await mf.startServer();
+		const mfServer = await mf.startServer();
+		const mfPort = (mfServer.address() as AddressInfo).port;
 		await mf.startScheduler();
 
 		const internalDurableObjectClassNames = Object.values(
@@ -191,6 +193,7 @@ async function main() {
 		process.send &&
 			process.send(
 				JSON.stringify({
+					port: mfPort,
 					ready: true,
 					durableObjectsPort: durableObjectsMfPort,
 				})

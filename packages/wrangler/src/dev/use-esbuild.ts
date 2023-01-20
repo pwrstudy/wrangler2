@@ -2,13 +2,13 @@ import assert from "node:assert";
 import { watch } from "chokidar";
 import { useApp } from "ink";
 import { useState, useEffect } from "react";
-import { bundleWorker } from "../bundle";
-import { logger } from "../logger";
+import { bundleWorker, rewriteNodeCompatBuildFailure } from "../bundle";
+import { logBuildFailure, logger } from "../logger";
 import type { Config } from "../config";
 import type { WorkerRegistry } from "../dev-registry";
 import type { Entry } from "../entry";
 import type { CfModule } from "../worker";
-import type { WatchMode } from "esbuild";
+import type { WatchMode, Metafile } from "esbuild";
 
 export type EsbuildBundle = {
 	id: number;
@@ -16,6 +16,7 @@ export type EsbuildBundle = {
 	entry: Entry;
 	type: "esm" | "commonjs";
 	modules: CfModule[];
+	dependencies: Metafile["outputs"][string]["inputs"];
 	sourceMapPath: string | undefined;
 };
 
@@ -30,12 +31,17 @@ export function useEsbuild({
 	tsconfig,
 	minify,
 	nodeCompat,
+	betaD1Shims,
 	define,
 	noBundle,
 	workerDefinitions,
 	services,
 	durableObjects,
 	firstPartyWorkerDevFacade,
+	local,
+	targetConsumer,
+	testScheduled,
+	experimentalLocal,
 }: {
 	entry: Entry;
 	destination: string | undefined;
@@ -49,10 +55,15 @@ export function useEsbuild({
 	tsconfig: string | undefined;
 	minify: boolean | undefined;
 	nodeCompat: boolean | undefined;
+	betaD1Shims?: string[];
 	noBundle: boolean;
 	workerDefinitions: WorkerRegistry;
 	durableObjects: Config["durable_objects"];
 	firstPartyWorkerDevFacade: boolean | undefined;
+	local: boolean;
+	targetConsumer: "dev" | "publish";
+	testScheduled: boolean;
+	experimentalLocal: boolean | undefined;
 }): EsbuildBundle | undefined {
 	const [bundle, setBundle] = useState<EsbuildBundle>();
 	const { exit } = useApp();
@@ -73,8 +84,11 @@ export function useEsbuild({
 
 		const watchMode: WatchMode = {
 			async onRebuild(error) {
-				if (error) logger.error("Watch build failed:", error);
-				else {
+				if (error !== null) {
+					if (!nodeCompat) rewriteNodeCompatBuildFailure(error);
+					logBuildFailure(error);
+					logger.error("Watch build failed:", error.message);
+				} else {
 					updateBundle();
 				}
 			},
@@ -87,11 +101,13 @@ export function useEsbuild({
 				resolvedEntryPointPath,
 				bundleType,
 				modules,
+				dependencies,
 				stop,
 				sourceMapPath,
 			}: Awaited<ReturnType<typeof bundleWorker>> = noBundle
 				? {
 						modules: [],
+						dependencies: {},
 						resolvedEntryPointPath: entry.file,
 						bundleType: entry.format === "modules" ? "esm" : "commonjs",
 						stop: undefined,
@@ -106,6 +122,7 @@ export function useEsbuild({
 						tsconfig,
 						minify,
 						nodeCompat,
+						betaD1Shims,
 						define,
 						checkFetch: true,
 						assets: assets && {
@@ -116,6 +133,10 @@ export function useEsbuild({
 						workerDefinitions,
 						services,
 						firstPartyWorkerDevFacade,
+						local,
+						targetConsumer,
+						testScheduled,
+						experimentalLocal,
 				  });
 
 			// Capture the `stop()` method to use as the `useEffect()` destructor.
@@ -131,16 +152,16 @@ export function useEsbuild({
 				});
 
 				stopWatching = () => {
-					watcher.close();
+					void watcher.close();
 				};
 			}
-
 			setBundle({
 				id: 0,
 				entry,
 				path: resolvedEntryPointPath,
 				type: bundleType,
 				modules,
+				dependencies,
 				sourceMapPath,
 			});
 		}
@@ -173,6 +194,11 @@ export function useEsbuild({
 		durableObjects,
 		workerDefinitions,
 		firstPartyWorkerDevFacade,
+		betaD1Shims,
+		local,
+		targetConsumer,
+		testScheduled,
+		experimentalLocal,
 	]);
 	return bundle;
 }

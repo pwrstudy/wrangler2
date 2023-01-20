@@ -1,69 +1,46 @@
-import { spawn } from "child_process";
-import * as path from "path";
-import patchConsole from "patch-console";
+import { execSync } from "node:child_process";
+import path, { resolve } from "node:path";
 import { fetch } from "undici";
-// import { mockConsoleMethods } from "../../../packages/wrangler/src/__tests__/helpers/mock-console";
-import type { ChildProcess } from "child_process";
-import type { Response } from "undici";
+import { describe, it } from "vitest";
+import { runWranglerPagesDev } from "../../shared/src/run-wrangler-long-lived";
 
-const waitUntilReady = async (url: string): Promise<Response> => {
-	let response: Response | undefined = undefined;
-
-	while (response === undefined) {
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
-
-		try {
-			response = await fetch(url);
-		} catch (err) {}
-	}
-
-	return response as Response;
-};
-
-const isWindows = process.platform === "win32";
-
-describe("Pages _worker.js", () => {
-	let wranglerProcess: ChildProcess;
-
-	// const std = mockConsoleMethods();
-	beforeEach(() => {
-		wranglerProcess = spawn("npm", ["run", "dev"], {
-			shell: isWindows,
-			cwd: path.resolve(__dirname, "../"),
-			env: { BROWSER: "none", ...process.env },
-		});
-		wranglerProcess.stdout?.on("data", (chunk) => {
-			console.log(chunk.toString());
-		});
-		wranglerProcess.stderr?.on("data", (chunk) => {
-			console.log(chunk.toString());
-		});
+describe.concurrent("Pages _worker.js", () => {
+	it("should throw an error when the _worker.js file imports something", ({
+		expect,
+	}) => {
+		expect(() =>
+			execSync("npm run dev", {
+				cwd: path.resolve(__dirname, ".."),
+				stdio: "ignore",
+			})
+		).toThrowError();
 	});
 
-	afterEach(async () => {
-		patchConsole(() => {});
-
-		await new Promise((resolve, reject) => {
-			wranglerProcess.once("exit", (code) => {
-				if (!code) {
-					resolve(code);
-				} else {
-					reject(code);
-				}
-			});
-			wranglerProcess.kill("SIGTERM");
-		});
+	it("should not throw an error when the _worker.js file imports something if --no-bundle is false", async ({
+		expect,
+	}) => {
+		const { ip, port, stop } = await runWranglerPagesDev(
+			resolve(__dirname, ".."),
+			"./workerjs-test",
+			["--no-bundle=false", "--port=0"]
+		);
+		await expect(
+			fetch(`http://${ip}:${port}/`).then((resp) => resp.text())
+		).resolves.toContain("test");
+		await stop();
 	});
 
-	it("renders static pages", async () => {
-		const response = await waitUntilReady("http://127.0.0.1:8792/");
-		const text = await response.text();
-		expect(text).toContain("test");
+	it("should not throw an error when the _worker.js file imports something if --bundle is true", async ({
+		expect,
+	}) => {
+		const { ip, port, stop } = await runWranglerPagesDev(
+			resolve(__dirname, ".."),
+			"./workerjs-test",
+			["--bundle", "--port=0"]
+		);
+		await expect(
+			fetch(`http://${ip}:${port}/`).then((resp) => resp.text())
+		).resolves.toContain("test");
+		await stop();
 	});
-
-	it.todo("shows an error for the import in _worker.js");
-	// it("shows an error for the import in _worker.js", async () => {
-	// 	const _ = await waitUntilReady("http://127.0.0.1:8792/");
-	// 	expect(std.err).toMatchInlineSnapshot(`""`);
-	// });
 });

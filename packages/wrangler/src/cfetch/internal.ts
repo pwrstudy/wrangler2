@@ -1,7 +1,7 @@
 import assert from "node:assert";
-import { fetch, Headers } from "undici";
+import { fetch, File, Headers } from "undici";
 import { version as wranglerVersion } from "../../package.json";
-import { getEnvironmentVariableFactory } from "../environment-variables";
+import { getCloudflareApiBaseUrl } from "../environment-variables/misc-variables";
 import { logger } from "../logger";
 import { ParseError, parseJSON } from "../parse";
 import { loginOrRefreshIfRequired, requireApiToken } from "../user";
@@ -9,14 +9,47 @@ import type { ApiCredentials } from "../user";
 import type { URLSearchParams } from "node:url";
 import type { RequestInit, HeadersInit, Response } from "undici";
 
-/**
- * Get the URL to use to access the Cloudflare API.
- */
-export const getCloudflareAPIBaseURL = getEnvironmentVariableFactory({
-	variableName: "CLOUDFLARE_API_BASE_URL",
-	deprecatedName: "CF_API_BASE_URL",
-	defaultValue: "https://api.cloudflare.com/client/v4",
-});
+/*
+ * performApiFetch does everything required to make a CF API request,
+ * but doesn't parse the response as JSON. For normal V4 API responses,
+ * use `fetchInternal`
+ * */
+export async function performApiFetch(
+	resource: string,
+	init: RequestInit = {},
+	queryParams?: URLSearchParams,
+	abortSignal?: AbortSignal
+) {
+	const method = init.method ?? "GET";
+	assert(
+		resource.startsWith("/"),
+		`CF API fetch - resource path must start with a "/" but got "${resource}"`
+	);
+	await requireLoggedIn();
+	const apiToken = requireApiToken();
+	const headers = cloneHeaders(init.headers);
+	addAuthorizationHeaderIfUnspecified(headers, apiToken);
+	addUserAgent(headers);
+
+	const queryString = queryParams ? `?${queryParams.toString()}` : "";
+	logger.debug(
+		`-- START CF API REQUEST: ${method} ${getCloudflareApiBaseUrl()}${resource}${queryString}`
+	);
+	const logHeaders = cloneHeaders(headers);
+	delete logHeaders["Authorization"];
+	logger.debug("HEADERS:", JSON.stringify(logHeaders, null, 2));
+	logger.debug(
+		"INIT:",
+		JSON.stringify({ ...init, headers: logHeaders }, null, 2)
+	);
+	logger.debug("-- END CF API REQUEST");
+	return await fetch(`${getCloudflareApiBaseUrl()}${resource}${queryString}`, {
+		method,
+		...init,
+		headers,
+		signal: abortSignal,
+	});
+}
 
 /**
  * Make a fetch request to the Cloudflare API.
@@ -33,33 +66,12 @@ export async function fetchInternal<ResponseType>(
 	queryParams?: URLSearchParams,
 	abortSignal?: AbortSignal
 ): Promise<ResponseType> {
-	assert(
-		resource.startsWith("/"),
-		`CF API fetch - resource path must start with a "/" but got "${resource}"`
-	);
-	await requireLoggedIn();
-	const apiToken = requireApiToken();
-	const headers = cloneHeaders(init.headers);
-	addAuthorizationHeaderIfUnspecified(headers, apiToken);
-	addUserAgent(headers);
-
-	const queryString = queryParams ? `?${queryParams.toString()}` : "";
 	const method = init.method ?? "GET";
-
-	logger.debug(
-		`-- START CF API REQUEST: ${method} ${getCloudflareAPIBaseURL()}${resource}${queryString}`
-	);
-	logger.debug("HEADERS:", JSON.stringify(headers, null, 2));
-	logger.debug("INIT:", JSON.stringify(init, null, 2));
-	logger.debug("-- END CF API REQUEST");
-	const response = await fetch(
-		`${getCloudflareAPIBaseURL()}${resource}${queryString}`,
-		{
-			method,
-			...init,
-			headers,
-			signal: abortSignal,
-		}
+	const response = await performApiFetch(
+		resource,
+		init,
+		queryParams,
+		abortSignal
 	);
 	const jsonText = await response.text();
 	logger.debug(
@@ -67,7 +79,9 @@ export async function fetchInternal<ResponseType>(
 		response.statusText,
 		response.status
 	);
-	logger.debug("HEADERS:", JSON.stringify(response.headers, null, 2));
+	const logHeaders = cloneHeaders(response.headers);
+	delete logHeaders["Authorization"];
+	logger.debug("HEADERS:", JSON.stringify(logHeaders, null, 2));
 	logger.debug("RESPONSE:", jsonText);
 	logger.debug("-- END CF API RESPONSE");
 
@@ -150,7 +164,7 @@ export async function fetchKVGetValue(
 	const auth = requireApiToken();
 	const headers: Record<string, string> = {};
 	addAuthorizationHeaderIfUnspecified(headers, auth);
-	const resource = `${getCloudflareAPIBaseURL()}/accounts/${accountId}/storage/kv/namespaces/${namespaceId}/values/${key}`;
+	const resource = `${getCloudflareApiBaseUrl()}/accounts/${accountId}/storage/kv/namespaces/${namespaceId}/values/${key}`;
 	const response = await fetch(resource, {
 		method: "GET",
 		headers,
@@ -183,7 +197,7 @@ export async function fetchR2Objects(
 	addAuthorizationHeaderIfUnspecified(headers, auth);
 	addUserAgent(headers);
 
-	const response = await fetch(`${getCloudflareAPIBaseURL()}${resource}`, {
+	const response = await fetch(`${getCloudflareApiBaseUrl()}${resource}`, {
 		...bodyInit,
 		headers,
 	});
@@ -210,7 +224,7 @@ export async function fetchDashboardScript(
 	addAuthorizationHeaderIfUnspecified(headers, auth);
 	addUserAgent(headers);
 
-	const response = await fetch(`${getCloudflareAPIBaseURL()}${resource}`, {
+	const response = await fetch(`${getCloudflareApiBaseUrl()}${resource}`, {
 		...bodyInit,
 		headers,
 	});
@@ -226,11 +240,18 @@ export async function fetchDashboardScript(
 		?.startsWith("multipart");
 
 	if (usesModules) {
-		const file = await response.text();
+		// Response from edge contains generic "name = worker.js" for dashboard created scripts
+		const form = await response.formData();
+		const entries = Array.from(form.entries());
+		if (entries.length > 1)
+			throw new RangeError("Expected only one entry in multipart response");
+		const [_, file] = entries[0];
 
-		// Follow up on issue in Undici about multipart/form-data support & replace the workaround: https://github.com/nodejs/undici/issues/974
-		// This should be using a builtin formData() parser pattern.
-		return file.split("\n").slice(4, -4).join("\n");
+		if (file instanceof File) {
+			return await file.text();
+		}
+
+		return file ?? "";
 	} else {
 		return response.text();
 	}

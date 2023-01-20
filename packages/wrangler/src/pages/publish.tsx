@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { cwd } from "node:process";
 import { render, Text } from "ink";
 import SelectInput from "ink-select-input";
@@ -17,19 +17,15 @@ import { requireAuth } from "../user";
 import { buildFunctions } from "./build";
 import { PAGES_CONFIG_CACHE_FILENAME } from "./constants";
 import { FunctionsNoRoutesError, getFunctionsNoRoutesWarning } from "./errors";
-import {
-	isRoutesJSONSpec,
-	optimizeRoutesJSONSpec,
-} from "./functions/routes-transformation";
+import { buildRawWorker, checkRawWorker } from "./functions/buildWorker";
+import { validateRoutes } from "./functions/routes-validation";
 import { listProjects } from "./projects";
+import { promptSelectProject } from "./prompt-select-project";
 import { upload } from "./upload";
 import { pagesBetaWarning } from "./utils";
-import type {
-	Deployment,
-	PagesConfigCache,
-	Project,
-	YargsOptionsToInterface,
-} from "./types";
+import type { YargsOptionsToInterface } from "../yargs-types";
+import type { PagesConfigCache } from "./types";
+import type { Project, Deployment } from "@cloudflare/types";
 import type { Argv } from "yargs";
 
 type PublishArgs = YargsOptionsToInterface<typeof Options>;
@@ -63,6 +59,20 @@ export function Options(yargs: Argv) {
 				description:
 					"Whether or not the workspace should be considered dirty for this deployment",
 			},
+			"skip-caching": {
+				type: "boolean",
+				description: "Skip asset caching which speeds up builds",
+			},
+			bundle: {
+				type: "boolean",
+				default: false,
+				hidden: true,
+			},
+			"no-bundle": {
+				type: "boolean",
+				default: true,
+				description: "Whether to run bundling on `_worker.js` before deploying",
+			},
 			config: {
 				describe: "Pages does not support wrangler.toml",
 				type: "string",
@@ -79,6 +89,9 @@ export const Handler = async ({
 	commitHash,
 	commitMessage,
 	commitDirty,
+	skipCaching,
+	bundle,
+	noBundle,
 	config: wranglerConfig,
 }: PublishArgs) => {
 	if (wranglerConfig) {
@@ -135,24 +148,7 @@ export const Handler = async ({
 
 		switch (existingOrNew) {
 			case "existing": {
-				projectName = await new Promise((resolve) => {
-					const { unmount } = render(
-						<>
-							<Text>Select a project:</Text>
-							<SelectInput
-								items={projects.map((project) => ({
-									key: project.name,
-									label: project.name,
-									value: project,
-								}))}
-								onSelect={async (selected) => {
-									resolve(selected.value.name);
-									unmount();
-								}}
-							/>
-						</>
-					);
-				});
+				projectName = await promptSelectProject({ accountId });
 				break;
 			}
 			case "new": {
@@ -173,10 +169,11 @@ export const Handler = async ({
 
 				const productionBranch = await prompt(
 					"Enter the production branch name:",
-					"text",
-					isGitDir
-						? execSync(`git rev-parse --abbrev-ref HEAD`).toString().trim()
-						: "production"
+					{
+						defaultValue: isGitDir
+							? execSync(`git rev-parse --abbrev-ref HEAD`).toString().trim()
+							: "production",
+					}
 				);
 
 				if (!productionBranch) {
@@ -208,7 +205,6 @@ export const Handler = async ({
 	}
 
 	// We infer git info by default is not passed in
-
 	let isGitDir = true;
 	try {
 		execSync(`git rev-parse --is-inside-work-tree`, {
@@ -252,20 +248,81 @@ export const Handler = async ({
 		}
 	}
 
+	let _headers: string | undefined,
+		_redirects: string | undefined,
+		_routesGenerated: string | undefined,
+		_routesCustom: string | undefined,
+		_workerJS: string | undefined;
+
+	const workerScriptPath = resolvePath(directory, "_worker.js");
+
+	try {
+		_headers = readFileSync(join(directory, "_headers"), "utf-8");
+	} catch {}
+
+	try {
+		_redirects = readFileSync(join(directory, "_redirects"), "utf-8");
+	} catch {}
+
+	try {
+		/**
+		 * Developers can specify a custom _routes.json file, for projects with Pages
+		 * Functions or projects in Advanced Mode
+		 */
+		_routesCustom = readFileSync(join(directory, "_routes.json"), "utf-8");
+	} catch {}
+
+	try {
+		_workerJS = readFileSync(workerScriptPath, "utf-8");
+	} catch {}
+
+	// Grab the bindings from the API, we need these for shims and other such hacky inserts
+	const project = await fetchResult<Project>(
+		`/accounts/${accountId}/pages/projects/${projectName}`
+	);
+	let isProduction = true;
+	if (branch) {
+		isProduction = project.production_branch === branch;
+	}
+
+	/**
+	 * Evaluate if this is an Advanced Mode or Pages Functions project. If Advanced Mode, we'll
+	 * go ahead and upload `_worker.js` as is, but if Pages Functions, we need to attempt to build
+	 * Functions first and exit if it failed
+	 */
 	let builtFunctions: string | undefined = undefined;
 	const functionsDirectory = join(cwd(), "functions");
-	const routesOutputPath = join(tmpdir(), `_routes-${Math.random()}.json`);
-	if (existsSync(functionsDirectory)) {
+	const routesOutputPath = !existsSync(join(directory, "_routes.json"))
+		? join(tmpdir(), `_routes-${Math.random()}.json`)
+		: undefined;
+
+	// Routing configuration displayed in the Functions tab of a deployment in Dash
+	let filepathRoutingConfig: string | undefined;
+
+	if (!_workerJS && existsSync(functionsDirectory)) {
 		const outfile = join(tmpdir(), `./functionsWorker-${Math.random()}.js`);
+		const outputConfigPath = join(
+			tmpdir(),
+			`functions-filepath-routing-config-${Math.random()}.json`
+		);
+
 		try {
 			await buildFunctions({
 				outfile,
+				outputConfigPath,
 				functionsDirectory,
 				onEnd: () => {},
 				buildOutputDirectory: dirname(outfile),
 				routesOutputPath,
+				local: false,
+				d1Databases: Object.keys(
+					project.deployment_configs[isProduction ? "production" : "preview"]
+						.d1_databases ?? {}
+				),
 			});
+
 			builtFunctions = readFileSync(outfile, "utf-8");
+			filepathRoutingConfig = readFileSync(outputConfigPath, "utf-8");
 		} catch (e) {
 			if (e instanceof FunctionsNoRoutesError) {
 				logger.warn(
@@ -277,7 +334,12 @@ export const Handler = async ({
 		}
 	}
 
-	const manifest = await upload({ directory, accountId, projectName });
+	const manifest = await upload({
+		directory,
+		accountId,
+		projectName,
+		skipCaching: skipCaching ?? false,
+	});
 
 	const formData = new FormData();
 
@@ -299,23 +361,6 @@ export const Handler = async ({
 		formData.append("commit_dirty", commitDirty);
 	}
 
-	let _headers: string | undefined,
-		_redirects: string | undefined,
-		_routes: string | undefined,
-		_workerJS: string | undefined;
-
-	try {
-		_headers = readFileSync(join(directory, "_headers"), "utf-8");
-	} catch {}
-
-	try {
-		_redirects = readFileSync(join(directory, "_redirects"), "utf-8");
-	} catch {}
-
-	try {
-		_workerJS = readFileSync(join(directory, "_worker.js"), "utf-8");
-	} catch {}
-
 	if (_headers) {
 		formData.append("_headers", new File([_headers], "_headers"));
 		logger.log(`✨ Uploading _headers`);
@@ -326,51 +371,104 @@ export const Handler = async ({
 		logger.log(`✨ Uploading _redirects`);
 	}
 
-	if (builtFunctions) {
-		formData.append("_worker.js", new File([builtFunctions], "_worker.js"));
-		logger.log(`✨ Uploading Functions`);
-		try {
-			_routes = readFileSync(routesOutputPath, "utf-8");
-			if (_routes) {
-				formData.append("_routes.json", new File([_routes], "_routes.json"));
-			}
-		} catch {}
-	} else if (_workerJS) {
-		// Advanced Mode
-		// https://developers.cloudflare.com/pages/platform/functions/#advanced-mode
-		formData.append("_worker.js", new File([_workerJS], "_worker.js"));
+	if (filepathRoutingConfig) {
+		formData.append(
+			"functions-filepath-routing-config.json",
+			new File(
+				[filepathRoutingConfig],
+				"functions-filepath-routing-config.json"
+			)
+		);
+	}
+
+	/**
+	 * Advanced Mode
+	 * https://developers.cloudflare.com/pages/platform/functions/#advanced-mode
+	 *
+	 * When using a _worker.js file, the entire /functions directory is ignored
+	 * – this includes its routing and middleware characteristics.
+	 */
+	if (_workerJS) {
+		let workerFileContents = _workerJS;
+		const enableBundling = bundle || !noBundle;
+		if (enableBundling) {
+			const outfile = join(tmpdir(), `./bundledWorker-${Math.random()}.mjs`);
+			await buildRawWorker({
+				workerScriptPath,
+				outfile,
+				directory: directory ?? ".",
+				local: false,
+				sourcemap: true,
+				watch: false,
+				onEnd: () => {},
+			});
+			workerFileContents = readFileSync(outfile, "utf8");
+		} else {
+			await checkRawWorker(workerScriptPath, () => {});
+		}
+
+		formData.append("_worker.js", new File([workerFileContents], "_worker.js"));
 		logger.log(`✨ Uploading _worker.js`);
 
-		try {
-			// In advanced mode, developers can specify a custom _routes.json
-			// file. In which case, we need to run it through optimization
-			// to potentially reduce the overall worker pipeline size
-			const routesPath = join(directory, "_routes.json");
-			const advancedModeRoutesString = readFileSync(routesPath, "utf-8");
-			const advancedModeRoutes = JSON.parse(advancedModeRoutesString);
+		if (_routesCustom) {
+			// user provided a custom _routes.json file
+			try {
+				const routesCustomJSON = JSON.parse(_routesCustom);
+				validateRoutes(routesCustomJSON, join(directory, "_routes.json"));
 
-			if (!isRoutesJSONSpec(advancedModeRoutes)) {
-				throw new FatalError(
-					"Invalid _routes.json file found at:" + routesPath,
-					1
+				formData.append(
+					"_routes.json",
+					new File([_routesCustom], "_routes.json")
 				);
-			}
-
-			_routes = JSON.stringify(optimizeRoutesJSONSpec(advancedModeRoutes));
-			formData.append("_routes.json", new File([_routes], "_routes.json"));
-			logger.log(`✨ Uploading _routes.json`);
-
-			logger.warn(
-				`🚨 _routes.json is an experimental feature and is subject to change. Don't use unless you really must!`
-			);
-		} catch (e) {
-			// Ignore file not existing errors for _routes.json but forward the potential
-			// FatalError from an invalid spec
-			if (e instanceof FatalError) {
-				throw e;
+				logger.log(`✨ Uploading _routes.json`);
+			} catch (err) {
+				if (err instanceof FatalError) {
+					throw err;
+				}
 			}
 		}
 	}
+
+	/**
+	 * Pages Functions
+	 * https://developers.cloudflare.com/pages/platform/functions/
+	 */
+	if (builtFunctions && !_workerJS) {
+		// if Functions were build successfully, proceed to uploading the build file
+		formData.append("_worker.js", new File([builtFunctions], "_worker.js"));
+		logger.log(`✨ Uploading Functions`);
+
+		if (_routesCustom) {
+			// user provided a custom _routes.json file
+			try {
+				const routesCustomJSON = JSON.parse(_routesCustom);
+				validateRoutes(routesCustomJSON, join(directory, "_routes.json"));
+
+				formData.append(
+					"_routes.json",
+					new File([_routesCustom], "_routes.json")
+				);
+				logger.log(`✨ Uploading _routes.json`);
+			} catch (err) {
+				if (err instanceof FatalError) {
+					throw err;
+				}
+			}
+		} else if (routesOutputPath) {
+			// no custom _routes.json file found, so fallback to the generated one
+			try {
+				_routesGenerated = readFileSync(routesOutputPath, "utf-8");
+
+				if (_routesGenerated) {
+					formData.append(
+						"_routes.json",
+						new File([_routesGenerated], "_routes.json")
+					);
+				}
+			} catch {}
+		}
+	}
+
 	const deploymentResponse = await fetchResult<Deployment>(
 		`/accounts/${accountId}/pages/projects/${projectName}/deployments`,
 		{

@@ -11,6 +11,7 @@ import WebSocket, { WebSocketServer } from "ws";
 import { version } from "../package.json";
 import { logger } from "./logger";
 import { waitForPortToBeAvailable } from "./proxy";
+import { getAccessToken } from "./user/access";
 import type Protocol from "devtools-protocol";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import type { MessageEvent } from "ws";
@@ -58,6 +59,8 @@ interface InspectorProps {
 	 * Sourcemap path, so that stacktraces can be interpretted
 	 */
 	sourceMapPath?: string | undefined;
+
+	host?: string;
 }
 
 export default function useInspector(props: InspectorProps) {
@@ -204,14 +207,31 @@ export default function useInspector(props: InspectorProps) {
 	/** A simple incrementing id to attach to messages we send to devtools */
 	const messageCounterRef = useRef(1);
 
+	const cfAccessRef = useRef<string>();
+
+	useEffect(() => {
+		const run = async () => {
+			if (props.host && !cfAccessRef.current) {
+				const token = await getAccessToken(props.host);
+				cfAccessRef.current = token;
+			}
+		};
+		if (props.host) void run();
+	}, [props.host]);
+
 	// This effect tracks the connection to the remote websocket
 	// (stored in, no surprises here, `remoteWebSocket`)
 	useEffect(() => {
 		if (!props.inspectorUrl) {
 			return;
 		}
+
 		// The actual websocket instance
-		const ws = new WebSocket(props.inspectorUrl);
+		const ws = new WebSocket(props.inspectorUrl, {
+			headers: {
+				cookie: `CF_Authorization=${cfAccessRef.current}`,
+			},
+		});
 		setRemoteWebSocket(ws);
 
 		/**
@@ -610,36 +630,36 @@ function logConsoleMessage(evt: Protocol.Runtime.ConsoleAPICalledEvent): void {
 							break;
 						case "weakmap":
 						case "map":
-							args.push(
-								"{\n" +
-									// Maps always have entries
-									// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-									ro.preview
-										.entries!.map(({ key, value }) => {
-											return `  ${key?.description ?? "<unknown>"} => ${
-												value.description
-											}`;
-										})
-										.join(",\n") +
-									(ro.preview.overflow ? "\n  ..." : "") +
-									"\n}"
-							);
+							ro.preview.entries === undefined
+								? args.push("{}")
+								: args.push(
+										"{\n" +
+											ro.preview.entries
+												.map(({ key, value }) => {
+													return `  ${key?.description ?? "<unknown>"} => ${
+														value.description
+													}`;
+												})
+												.join(",\n") +
+											(ro.preview.overflow ? "\n  ..." : "") +
+											"\n}"
+								  );
 
 							break;
 						case "weakset":
 						case "set":
-							args.push(
-								"{ " +
-									// Sets always have entries
-									// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-									ro.preview
-										.entries!.map(({ value }) => {
-											return `${value.description}`;
-										})
-										.join(", ") +
-									(ro.preview.overflow ? ", ..." : "") +
-									" }"
-							);
+							ro.preview.entries === undefined
+								? args.push("{}")
+								: args.push(
+										"{ " +
+											ro.preview.entries
+												.map(({ value }) => {
+													return `${value.description}`;
+												})
+												.join(", ") +
+											(ro.preview.overflow ? ", ..." : "") +
+											" }"
+								  );
 							break;
 						case "regexp":
 							break;

@@ -102,6 +102,14 @@ export function normalizeAndValidateConfig(
 		"boolean"
 	);
 
+	validateOptionalProperty(
+		diagnostics,
+		"",
+		"keep_vars",
+		rawConfig.keep_vars,
+		"boolean"
+	);
+
 	// TODO: set the default to false to turn on service environments as the default
 	const isLegacyEnv =
 		(args as { "legacy-env": boolean | undefined })["legacy-env"] ??
@@ -182,6 +190,7 @@ export function normalizeAndValidateConfig(
 		configPath,
 		legacy_env: isLegacyEnv,
 		send_metrics: rawConfig.send_metrics,
+		keep_vars: rawConfig.keep_vars,
 		...activeEnv,
 		dev: normalizeAndValidateDev(diagnostics, rawConfig.dev ?? {}),
 		migrations: normalizeAndValidateMigrations(
@@ -889,6 +898,7 @@ function normalizeAndValidateEnvironment(
 	);
 
 	// The field "experimental_services" doesn't exist anymore in the config, but we still want to error about any older usage.
+
 	deprecated(
 		diagnostics,
 		rawEnv,
@@ -899,7 +909,6 @@ function normalizeAndValidateEnvironment(
 
 	experimental(diagnostics, rawEnv, "unsafe");
 	experimental(diagnostics, rawEnv, "services");
-	experimental(diagnostics, rawEnv, "dispatch_namespaces");
 
 	const route = normalizeAndValidateRoute(diagnostics, topLevelEnv, rawEnv);
 
@@ -1065,6 +1074,16 @@ function normalizeAndValidateEnvironment(
 			validateBindingArray(envName, validateKVBinding),
 			[]
 		),
+		queues: notInheritable(
+			diagnostics,
+			topLevelEnv,
+			rawConfig,
+			rawEnv,
+			envName,
+			"queues",
+			validateQueues(envName),
+			{ producers: [], consumers: [] }
+		),
 		r2_buckets: notInheritable(
 			diagnostics,
 			topLevelEnv,
@@ -1075,6 +1094,16 @@ function normalizeAndValidateEnvironment(
 			validateBindingArray(envName, validateR2Binding),
 			[]
 		),
+		d1_databases: notInheritable(
+			diagnostics,
+			topLevelEnv,
+			rawConfig,
+			rawEnv,
+			envName,
+			"d1_databases",
+			validateBindingArray(envName, validateD1Binding),
+			[]
+		),
 		services: notInheritable(
 			diagnostics,
 			topLevelEnv,
@@ -1083,6 +1112,16 @@ function normalizeAndValidateEnvironment(
 			envName,
 			"services",
 			validateBindingArray(envName, validateServiceBinding),
+			[]
+		),
+		analytics_engine_datasets: notInheritable(
+			diagnostics,
+			topLevelEnv,
+			rawConfig,
+			rawEnv,
+			envName,
+			"analytics_engine_datasets",
+			validateBindingArray(envName, validateAnalyticsEngineBinding),
 			[]
 		),
 		dispatch_namespaces: notInheritable(
@@ -1148,6 +1187,14 @@ function normalizeAndValidateEnvironment(
 			topLevelEnv,
 			rawEnv,
 			"first_party_worker",
+			isBoolean,
+			undefined
+		),
+		logpush: inheritable(
+			diagnostics,
+			topLevelEnv,
+			rawEnv,
+			"logpush",
 			isBoolean,
 			undefined
 		),
@@ -1539,6 +1586,7 @@ const validateUnsafeBinding: ValidatorFn = (diagnostics, field, value) => {
 			"text_blob",
 			"kv_namespace",
 			"durable_object_namespace",
+			"d1_database",
 			"r2_bucket",
 			"service",
 			"logfwdr",
@@ -1652,6 +1700,47 @@ const validateKVBinding: ValidatorFn = (diagnostics, field, value) => {
 	return isValid;
 };
 
+const validateQueueBinding: ValidatorFn = (diagnostics, field, value) => {
+	if (typeof value !== "object" || value === null) {
+		diagnostics.errors.push(
+			`"queue" bindings should be objects, but got ${JSON.stringify(value)}`
+		);
+		return false;
+	}
+
+	if (
+		!validateAdditionalProperties(diagnostics, field, Object.keys(value), [
+			"binding",
+			"queue",
+		])
+	) {
+		return false;
+	}
+
+	// Queue bindings must have a binding and queue.
+	let isValid = true;
+	if (!isRequiredProperty(value, "binding", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "binding" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	if (
+		!isRequiredProperty(value, "queue", "string") ||
+		(value as { queue: string }).queue.length === 0
+	) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "queue" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	return isValid;
+};
+
 const validateR2Binding: ValidatorFn = (diagnostics, field, value) => {
 	if (typeof value !== "object" || value === null) {
 		diagnostics.errors.push(
@@ -1693,6 +1782,53 @@ const validateR2Binding: ValidatorFn = (diagnostics, field, value) => {
 	return isValid;
 };
 
+const validateD1Binding: ValidatorFn = (diagnostics, field, value) => {
+	if (typeof value !== "object" || value === null) {
+		diagnostics.errors.push(
+			`"d1_databases" bindings should be objects, but got ${JSON.stringify(
+				value
+			)}`
+		);
+		return false;
+	}
+	let isValid = true;
+	// D1 databases must have a binding and either a database_name or database_id.
+	if (!isRequiredProperty(value, "binding", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "binding" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	if (
+		// TODO: allow name only, where we look up the ID dynamically
+		// !isOptionalProperty(value, "database_name", "string") &&
+		!isRequiredProperty(value, "database_id", "string")
+	) {
+		diagnostics.errors.push(
+			`"${field}" bindings must have a "database_id" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	if (!isOptionalProperty(value, "preview_database_id", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should, optionally, have a string "preview_database_id" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	if (isValid && !process.env.NO_D1_WARNING) {
+		diagnostics.warnings.push(
+			"D1 Bindings are currently in alpha to allow the API to evolve before general availability.\nPlease report any issues to https://github.com/cloudflare/wrangler2/issues/new/choose\nNote: Run this command with the environment variable NO_D1_WARNING=true to hide this message\n\nFor example: `export NO_D1_WARNING=true && wrangler <YOUR COMMAND HERE>`"
+		);
+	}
+	return isValid;
+};
+
 /**
  * Check that bindings whose names might conflict, don't.
  *
@@ -1707,6 +1843,7 @@ const validateBindingsHaveUniqueNames = (
 		durable_objects,
 		kv_namespaces,
 		r2_buckets,
+		analytics_engine_datasets,
 		text_blobs,
 		unsafe,
 		vars,
@@ -1721,6 +1858,7 @@ const validateBindingsHaveUniqueNames = (
 		"Durable Object": getBindingNames(durable_objects),
 		"KV Namespace": getBindingNames(kv_namespaces),
 		"R2 Bucket": getBindingNames(r2_buckets),
+		"Analytics Engine Dataset": getBindingNames(analytics_engine_datasets),
 		"Text Blob": getBindingNames(text_blobs),
 		Unsafe: getBindingNames(unsafe),
 		"Environment Variable": getBindingNames(vars),
@@ -1829,6 +1967,43 @@ const validateServiceBinding: ValidatorFn = (diagnostics, field, value) => {
 	return isValid;
 };
 
+const validateAnalyticsEngineBinding: ValidatorFn = (
+	diagnostics,
+	field,
+	value
+) => {
+	if (typeof value !== "object" || value === null) {
+		diagnostics.errors.push(
+			`"analytics_engine" bindings should be objects, but got ${JSON.stringify(
+				value
+			)}`
+		);
+		return false;
+	}
+	let isValid = true;
+	// Service bindings must have a binding and optional dataset.
+	if (!isRequiredProperty(value, "binding", "string")) {
+		diagnostics.errors.push(
+			`"${field}" bindings should have a string "binding" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	if (
+		!isOptionalProperty(value, "dataset", "string") ||
+		(value as { dataset: string }).dataset?.length === 0
+	) {
+		diagnostics.errors.push(
+			`"${field}" bindings should, optionally, have a string "dataset" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+		isValid = false;
+	}
+	return isValid;
+};
+
 const validateWorkerNamespaceBinding: ValidatorFn = (
 	diagnostics,
 	field,
@@ -1858,5 +2033,119 @@ const validateWorkerNamespaceBinding: ValidatorFn = (
 		);
 		isValid = false;
 	}
+	return isValid;
+};
+
+function validateQueues(envName: string): ValidatorFn {
+	return (diagnostics, field, value, config) => {
+		const fieldPath =
+			config === undefined ? `${field}` : `env.${envName}.${field}`;
+
+		if (typeof value !== "object" || Array.isArray(value) || value === null) {
+			diagnostics.errors.push(
+				`The field "${fieldPath}" should be an object but got ${JSON.stringify(
+					value
+				)}.`
+			);
+			return false;
+		}
+
+		let isValid = true;
+		if (
+			!validateAdditionalProperties(
+				diagnostics,
+				fieldPath,
+				Object.keys(value),
+				["consumers", "producers"]
+			)
+		) {
+			isValid = false;
+		}
+
+		if (hasProperty(value, "consumers")) {
+			const consumers = value.consumers;
+			if (!Array.isArray(consumers)) {
+				diagnostics.errors.push(
+					`The field "${fieldPath}.consumers" should be an array but got ${JSON.stringify(
+						consumers
+					)}.`
+				);
+				isValid = false;
+			}
+
+			for (let i = 0; i < consumers.length; i++) {
+				const consumer = consumers[i];
+				const consumerPath = `${fieldPath}.consumers[${i}]`;
+				if (!validateConsumer(diagnostics, consumerPath, consumer, config)) {
+					isValid = false;
+				}
+			}
+		}
+
+		if (hasProperty(value, "producers")) {
+			if (
+				!validateBindingArray(envName, validateQueueBinding)(
+					diagnostics,
+					`${field}.producers`,
+					value.producers,
+					config
+				)
+			) {
+				isValid = false;
+			}
+		}
+		return isValid;
+	};
+}
+
+const validateConsumer: ValidatorFn = (diagnostics, field, value, _config) => {
+	if (typeof value !== "object" || value === null) {
+		diagnostics.errors.push(
+			`"${field}" should be a objects, but got ${JSON.stringify(value)}`
+		);
+		return false;
+	}
+
+	let isValid = true;
+	if (
+		!validateAdditionalProperties(diagnostics, field, Object.keys(value), [
+			"queue",
+			"max_batch_size",
+			"max_batch_timeout",
+			"max_retries",
+			"dead_letter_queue",
+		])
+	) {
+		isValid = false;
+	}
+
+	if (!isRequiredProperty(value, "queue", "string")) {
+		diagnostics.errors.push(
+			`"${field}" should have a string "queue" field but got ${JSON.stringify(
+				value
+			)}.`
+		);
+	}
+
+	const options: {
+		key: string;
+		type: "number" | "string";
+	}[] = [
+		{ key: "max_batch_size", type: "number" },
+		{ key: "max_batch_timeout", type: "number" },
+		{ key: "max_retries", type: "number" },
+		{ key: "dead_letter_queue", type: "string" },
+	];
+	for (const optionalOpt of options) {
+		if (!isOptionalProperty(value, optionalOpt.key, optionalOpt.type)) {
+			diagnostics.errors.push(
+				`"${field}" should, optionally, have a ${optionalOpt.type} "${
+					optionalOpt.key
+				}" field but got ${JSON.stringify(value)}.`
+			);
+			isValid = false;
+		}
+	}
+
 	return isValid;
 };

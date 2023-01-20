@@ -14,7 +14,7 @@ echo "export default { fetch() { return new Response('hello world') } }" > index
 # try it out
 npx wrangler dev index.js
 # and then publish it
-npx wrangler publish index.js --name my-worker
+npx wrangler publish index.js --name my-worker --latest
 # visit https://my-worker.<your workers subdomain>.workers.dev
 ```
 
@@ -64,3 +64,7 @@ For more commands and options, refer to the [documentation](https://developers.c
 ## Documentation
 
 For the latest Wrangler documentation, [click here](https://developers.cloudflare.com/workers/wrangler/).
+
+## Contributing
+
+Refer to the [`CONTRIBUTING.md`](/CONTRIBUTING.md) guide for details.

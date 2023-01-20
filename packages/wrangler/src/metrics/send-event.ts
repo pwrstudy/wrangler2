@@ -7,8 +7,11 @@ import type { Properties } from "./metrics-dispatcher";
 export type EventNames =
 	| "view accounts"
 	| "deploy worker script"
+	| "delete worker script"
 	| "begin log stream"
 	| "end log stream"
+	| "begin pages log stream"
+	| "end pages log stream"
 	| "create encrypted variable"
 	| "delete encrypted variable"
 	| "list encrypted variables"
@@ -51,7 +54,9 @@ export type EventNames =
 	| "list pages deployments"
 	| "build pages functions"
 	| "run dev"
-	| "run pages dev";
+	| "run dev (api)"
+	| "run pages dev"
+	| "view docs";
 
 /**
  * Send a metrics event, with no extra properties, to Cloudflare, if usage tracking is enabled.

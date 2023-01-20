@@ -3,7 +3,10 @@ import { fetch } from "undici";
 import { fetchResult } from "./cfetch";
 import { createWorkerUploadForm } from "./create-worker-upload-form";
 import { logger } from "./logger";
+import { parseJSON } from "./parse";
+import { getAccessToken } from "./user/access";
 import type { CfAccount, CfWorkerContext, CfWorkerInit } from "./worker";
+import type { HeadersInit } from "undici";
 
 /**
  * A Preview Session on the edge
@@ -125,9 +128,26 @@ export async function createPreviewSession(
 		undefined,
 		abortSignal
 	);
-	const { inspector_websocket, prewarm, token } = (await (
-		await fetch(exchange_url, { signal: abortSignal })
-	).json()) as { inspector_websocket: string; token: string; prewarm: string };
+
+	logger.debug(`-- START EXCHANGE API REQUEST: GET ${exchange_url}`);
+	logger.debug("-- END EXCHANGE API REQUEST");
+	const exchangeResponse = await fetch(exchange_url, { signal: abortSignal });
+	const bodyText = await exchangeResponse.text();
+	logger.debug(
+		"-- START EXCHANGE API RESPONSE:",
+		exchangeResponse.statusText,
+		exchangeResponse.status
+	);
+	logger.debug("HEADERS:", JSON.stringify(exchangeResponse.headers, null, 2));
+	logger.debug("RESPONSE:", bodyText);
+	logger.debug("-- END EXCHANGE API RESPONSE");
+
+	const { inspector_websocket, prewarm, token } = parseJSON<{
+		inspector_websocket: string;
+		token: string;
+		prewarm: string;
+	}>(bodyText);
+
 	const { host } = new URL(inspector_websocket);
 	const query = `cf_workers_preview_token=${token}`;
 
@@ -233,13 +253,18 @@ export async function createWorkerPreview(
 		session,
 		abortSignal
 	);
+	const accessToken = await getAccessToken(token.prewarmUrl.hostname);
+
+	const headers: HeadersInit = { "cf-workers-preview-token": token.value };
+	if (accessToken) {
+		headers.cookie = `CF_Authorization=${accessToken}`;
+	}
+
 	// fire and forget the prewarm call
 	fetch(token.prewarmUrl.href, {
 		method: "POST",
 		signal: abortSignal,
-		headers: {
-			"cf-workers-preview-token": token.value,
-		},
+		headers,
 	}).then(
 		(response) => {
 			if (!response.ok) {

@@ -12,6 +12,8 @@ export const EXTERNAL_DEPENDENCIES = [
 	"miniflare",
 	"@miniflare/core",
 	"@miniflare/durable-objects",
+	"@miniflare/tre", // TODO: remove once Miniflare 3 moved in miniflare package
+	"@miniflare/web-sockets",
 	// todo - bundle miniflare too
 	"selfsigned",
 	"source-map",
